@@ -104,6 +104,7 @@ async function run() {
         res.status(500).send("Server Error");
       }
     });
+           
 
     app.get('/api/esp32', async(req, res) =>{
       const cursor = EspCollection.find({}).sort({_id: -1}).limit(500);
