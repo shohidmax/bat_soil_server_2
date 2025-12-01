@@ -33,7 +33,7 @@ io.on('connection', (socket) => {
 async function run() {
   try {
     await client.connect();
-    console.log('DB connected');
+    console.log('DB connected 3');
     
     const db = client.db('Esp32data4');
     const EspCollection = db.collection('espdata2');
