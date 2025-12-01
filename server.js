@@ -22,11 +22,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const uri = "mongodb+srv://atifsupermart202199:FGzi4j6kRnYTIyP9@cluster0.bfulggv.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
-// Store pending commands in memory: { "device_uid": { command: "restart", setDry: 3000, ... } }
+// পেন্ডিং কমান্ড স্টোর (মেমোরিতে)
 let pendingCommands = {};
 
 io.on('connection', (socket) => {
-  console.log('Socket Client Connected');
+  console.log('User connected via Socket.io');
+  socket.on('disconnect', () => console.log('User disconnected'));
 });
 
 async function run() {
@@ -57,7 +58,7 @@ async function run() {
       } catch (err) { res.status(500).send({ error: "Error fetching names" }); }
     });
 
-    // --- 2. Send Command API (Frontend calls this) ---
+    // --- 2. Send Command API (Updated for Interval) ---
     app.post('/api/send-command', (req, res) => {
       const { uid, command, value } = req.body;
       if (!uid || !command) return res.status(400).send({ error: "Missing params" });
@@ -70,13 +71,16 @@ async function run() {
         pendingCommands[uid].setDry = parseInt(value);
       } else if (command === 'setWet') {
         pendingCommands[uid].setWet = parseInt(value);
+      } else if (command === 'setInterval') {
+        // Interval মিনিটে আসবে
+        pendingCommands[uid].setInterval = parseInt(value);
       }
 
       console.log(`Command queued for ${uid}:`, pendingCommands[uid]);
       res.send({ success: true, message: "Command queued" });
     });
 
-    // --- 3. Sensor Data & Command Response API (ESP32 calls this) ---
+    // --- 3. Sensor Data & Command Response API ---
     app.post('/api/esp32p', async (req, res) => {
       try {
         const sensorData = req.body;
@@ -89,14 +93,12 @@ async function run() {
         // Check for pending commands
         let responsePayload = { status: "success" };
         if (uid && pendingCommands[uid]) {
-          // Add commands to response
           responsePayload = { ...responsePayload, ...pendingCommands[uid] };
-          // Clear pending commands after sending
           delete pendingCommands[uid];
           console.log(`Command sent to ${uid}`);
         }
 
-        res.json(responsePayload); // Send JSON response with commands
+        res.json(responsePayload);
       } catch (err) {
         console.error("Error:", err);
         res.status(500).send("Server Error");
