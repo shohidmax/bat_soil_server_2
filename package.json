@@ -1,0 +1,31 @@
+{
+  "name": "smart-garden-monitor-server",
+  "version": "1.0.0",
+  "description": "Node.js server for Smart Garden Monitor with MongoDB and Socket.io",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "esp32",
+    "iot",
+    "smart-garden",
+    "mongodb",
+    "socket.io",
+    "realtime"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mongodb": "^6.3.0",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
