@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
@@ -19,15 +19,15 @@ app.use(express.static('public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// MongoDB URI (আপনার নিজস্ব URI ব্যবহার করুন)
 const uri = "mongodb+srv://atifsupermart202199:FGzi4j6kRnYTIyP9@cluster0.bfulggv.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
-// পেন্ডিং কমান্ড স্টোর (মেমোরিতে)
+// --- [গুরুত্বপূর্ণ] পেন্ডিং কমান্ড স্টোর (মেমোরিতে) ---
 let pendingCommands = {};
 
 io.on('connection', (socket) => {
-  console.log('User connected via Socket.io');
-  socket.on('disconnect', () => console.log('User disconnected'));
+  console.log('Socket Client Connected');
 });
 
 async function run() {
@@ -39,7 +39,7 @@ async function run() {
     const EspCollection = db.collection('espdata2');
     const DeviceMetaCollection = db.collection('device_metadata');
 
-    // --- 1. Device Name API ---
+    // 1. Device Name API
     app.post('/api/device-name', async (req, res) => {
       try {
         const { uid, name } = req.body;
@@ -58,7 +58,7 @@ async function run() {
       } catch (err) { res.status(500).send({ error: "Error fetching names" }); }
     });
 
-    // --- 2. Send Command API (Updated for Interval) ---
+    // --- 2. [গুরুত্বপূর্ণ] Send Command API (Frontend calls this) ---
     app.post('/api/send-command', (req, res) => {
       const { uid, command, value } = req.body;
       if (!uid || !command) return res.status(400).send({ error: "Missing params" });
@@ -72,15 +72,18 @@ async function run() {
       } else if (command === 'setWet') {
         pendingCommands[uid].setWet = parseInt(value);
       } else if (command === 'setInterval') {
-        // Interval মিনিটে আসবে
         pendingCommands[uid].setInterval = parseInt(value);
       }
 
       console.log(`Command queued for ${uid}:`, pendingCommands[uid]);
+      
+      // সকেট দিয়ে কনফার্মেশন পাঠানো (অপশনাল)
+      io.emit('command-queued', { uid, command });
+      
       res.send({ success: true, message: "Command queued" });
     });
 
-    // --- 3. Sensor Data & Command Response API ---
+    // --- 3. [গুরুত্বপূর্ণ] Sensor Data & Command Response API (ESP32 calls this) ---
     app.post('/api/esp32p', async (req, res) => {
       try {
         const sensorData = req.body;
@@ -90,21 +93,24 @@ async function run() {
         await EspCollection.insertOne(sensorData);
         io.emit('new-data', sensorData);
 
-        // Check for pending commands
+        // Check for pending commands for this specific device
         let responsePayload = { status: "success" };
+        
         if (uid && pendingCommands[uid]) {
+          // Add commands to response
           responsePayload = { ...responsePayload, ...pendingCommands[uid] };
+          console.log(`Sending pending command to ${uid}:`, pendingCommands[uid]);
+          
+          // Clear pending commands after sending
           delete pendingCommands[uid];
-          console.log(`Command sent to ${uid}`);
         }
 
-        res.json(responsePayload);
+        res.json(responsePayload); // Send JSON response to ESP32
       } catch (err) {
         console.error("Error:", err);
         res.status(500).send("Server Error");
       }
     });
-           
 
     app.get('/api/esp32', async(req, res) =>{
       const cursor = EspCollection.find({}).sort({_id: -1}).limit(500);
@@ -112,7 +118,7 @@ async function run() {
       res.send(Data);
     });
 
-    app.get("/", (req, res) => res.send("Server Running"));
+    app.get("/", (req, res) => res.send("Server Running v2.0"));
 
   } finally {}
 }
