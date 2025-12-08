@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BAT Bangladesh - Multi-Device Farm</title>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Toastify CSS & JS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #eef2f5; --card-bg: #ffffff; --text-main: #1a2a3a; --text-light: #5f6c7b;
+            --bat-navy: #003366; --bat-yellow: #ffcc00; --tobacco-leaf: #556b2f;
+            --soil-gradient: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+            --temp-gradient: linear-gradient(135deg, #FF8C00 0%, #FFD700 100%);
+            --hum-gradient: linear-gradient(135deg, #00BFFF 0%, #1E90FF 100%);
+        }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; }
+        
+        /* Header */
+        .header-container { text-align: center; margin-bottom: 30px; position: relative; max-width: 1200px; margin-left: auto; margin-right: auto; padding-top: 10px; }
+        h1 { font-weight: 700; color: var(--bat-navy); margin: 0 0 5px 0; display: inline-flex; align-items: center; gap: 12px; font-size: 1.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .subtitle { font-size: 0.95rem; color: var(--text-light); font-weight: 500; margin-bottom: 20px; }
+        
+        /* Navigation Tabs */
+        .nav-tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+        .nav-btn { background: white; border: 1px solid #e1e4e8; padding: 10px 30px; border-radius: 50px; font-weight: 600; color: var(--text-light); cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+        .nav-btn.active { background: var(--bat-navy); color: white; border-color: var(--bat-navy); box-shadow: 0 6px 15px rgba(0, 51, 102, 0.25); }
+        .nav-btn:hover:not(.active) { background: #f8f9fa; transform: translateY(-2px); }
+
+        /* Main Device Status Badge (Center) */
+        .main-status-wrapper { display: flex; justify-content: center; margin-bottom: 20px; }
+        .status-pill {
+            padding: 6px 18px; border-radius: 50px; font-size: 0.85rem; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        .status-pill.online { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-pill.offline { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-pill.waiting { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+        .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; }
+        .status-pill.online .status-dot { background-color: #28a745; box-shadow: 0 0 5px #28a745; }
+        .status-pill.offline .status-dot { background-color: #dc3545; }
+        .status-pill.waiting .status-dot { background-color: #6c757d; }
+
+        /* Device Selector */
+        .device-selector-wrapper { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 30px; }
+        .device-selector-label { font-weight: 600; color: var(--bat-navy); font-size: 1rem; }
+        .device-select { padding: 10px 20px; border-radius: 8px; border: 2px solid var(--bat-navy); background: white; color: var(--bat-navy); font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; outline: none; font-size: 0.95rem; min-width: 250px; transition: all 0.2s; }
+        .device-select:hover { box-shadow: 0 4px 12px rgba(0, 51, 102, 0.1); }
+
+        /* Settings Button */
+        .settings-btn { position: absolute; right: 10px; top: 10px; background: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 1.5rem; color: var(--text-light); transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.05); z-index: 10; display: flex; align-items: center; justify-content: center; }
+        .settings-btn:hover { transform: rotate(45deg); background: var(--bat-navy); color: white; }
+
+        /* Cards */
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto 40px auto; justify-content: center; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); transition: transform 0.3s ease; display: flex; flex-direction: column; justify-content: space-between; border-bottom: 4px solid transparent; position: relative; overflow: hidden; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
+        .soil-card { border-bottom-color: #8B4513; } .temp-card { border-bottom-color: #FF8C00; } .hum-card { border-bottom-color: #00BFFF; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .card-title { font-size: 0.9rem; font-weight: 700; color: #8898aa; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        .icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .soil-card .icon-box { background: var(--soil-gradient); } .temp-card .icon-box { background: var(--temp-gradient); } .hum-card .icon-box { background: var(--hum-gradient); }
+        .value-box { font-size: 2.8rem; font-weight: 700; color: var(--bat-navy); line-height: 1; margin: 10px 0; }
+        .unit { font-size: 1.2rem; color: var(--text-light); font-weight: 500; margin-left: 2px; }
+        .sub-info { font-size: 0.85rem; color: #8898aa; display: flex; align-items: center; gap: 6px; font-weight: 500;}
+
+        /* Analytics */
+        .section-title { text-align: left; max-width: 1200px; margin: 0 auto 20px auto; font-size: 1.1rem; color: var(--bat-navy); font-weight: 700; display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-left: 5px solid var(--bat-navy); padding-left: 15px; }
+        .analytics-wrapper { max-width: 1200px; margin: 0 auto 50px auto; }
+        .filter-bar { background: #e8ecef; padding: 15px 25px; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 25px; border: 1px solid #dee2e6; }
+        .filter-group { display: flex; align-items: center; gap: 10px; flex-grow: 1; }
+        .filter-label { font-size: 0.9rem; color: var(--text-main); font-weight: 600; }
+        .filter-input { padding: 10px 15px; border: 1px solid #ced4da; border-radius: 8px; font-family: 'Poppins', sans-serif; color: var(--text-main); outline: none; font-size: 0.9rem; flex-grow: 1; background: white; }
+        .filter-btn { background: var(--bat-navy); color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-family: 'Poppins', sans-serif; font-weight: 600; transition: opacity 0.2s; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .filter-btn.reset { background: #b0b8c1; color: white; }
+        .filter-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+        .chart-card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); position: relative; min-width: 0; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .chart-title { font-size: 1.1rem; font-weight: 600; color: var(--bat-navy); }
+        .chart-container-inner { position: relative; height: 350px; width: 100%; }
+        .pie-container-inner { position: relative; height: 300px; width: 100%; display: flex; justify-content: center; }
+        .reset-zoom-btn { background: #f1f3f5; border: 1px solid #dee2e6; color: var(--text-light); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s; }
+        .reset-zoom-btn:hover { background: #e9ecef; color: var(--bat-navy); }
+
+        .table-wrapper { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); max-width: 1200px; margin: 0 auto 30px auto; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+        th { text-align: left; color: var(--bat-navy); font-weight: 600; padding: 18px; border-bottom: 2px solid #e9ecef; font-size: 0.85rem; text-transform: uppercase; background: #f8f9fa; }
+        td { padding: 18px; border-bottom: 1px solid #f1f3f5; color: var(--text-main); font-size: 0.95rem; }
+        tr:last-child td { border-bottom: none; }
+        
+        .download-container { max-width: 1200px; margin: 0 auto 50px auto; text-align: right; }
+        .download-btn { background: var(--bat-navy); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0, 51, 102, 0.2); text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.9rem; }
+        .download-btn:hover { background: #004080; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 51, 102, 0.3); }
+
+        /* Views */
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s ease-out; }
+
+        /* Device List Table */
+        .device-list-container { max-width: 1200px; margin: 0 auto 40px auto; }
+        .device-row { cursor: pointer; transition: background 0.2s; } .device-row:hover { background: #f0f4f8; }
+        .action-btn { background: var(--bat-navy); color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.8rem; border: none; cursor: pointer; transition: all 0.2s; font-weight: 500;}
+        .action-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        /* Realtime Flash Animation */
+        @keyframes flashRow {
+            0% { background-color: #d4edda; }
+            100% { background-color: transparent; }
+        }
+        .flash-row { animation: flashRow 1.5s ease-out; }
+
+        /* Badge Styles - UPDATED FOR GREEN ACTIVE */
+        .badge { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
+        .badge.online { background: #28a745; color: white; box-shadow: 0 2px 5px rgba(40, 167, 69, 0.3); } 
+        .badge.offline { background: #e74c3c; color: white; box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3); }
+        .badge.waiting { background: #95a5a6; color: white; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(26, 42, 58, 0.8); align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background-color: white; border-radius: 20px; width: 90%; max-width: 600px; box-shadow: 0 25px 60px rgba(0,0,0,0.4); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; animation: zoomIn 0.3s ease; }
+        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-header { background: var(--bat-navy); padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; color: white; }
+        .modal-header h2 { font-size: 1.2rem; font-weight: 600; letter-spacing: 0.5px; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .modal-body { padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 25px; }
+        .close-btn { background: none; border: none; color: white; font-size: 1.8rem; cursor: pointer; opacity: 0.8; transition: opacity 0.2s; }
+        .close-btn:hover { opacity: 1; }
+        
+        .system-status-box { background: #f4f6f8; padding: 20px; border-radius: 12px; border: 1px solid #e1e4e8; }
+        .system-status-box h3 { color: var(--bat-navy); font-size: 0.9rem; margin-top: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 15px;}
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .info-item-modal { display: flex; flex-direction: column; gap: 5px; }
+        .info-item-modal .label { font-size: 0.75rem; color: #8898aa; text-transform: uppercase; font-weight: 700; }
+        .info-item-modal .val { font-weight: 600; color: var(--text-main); font-size: 1rem; }
+        
+        .rename-section, .api-key-section { padding-top: 20px; border-top: 1px solid #e1e4e8; }
+        .rename-input-group, .api-key-input-group { display: flex; gap: 10px; margin-top: 15px; }
+        .section-header { font-size: 0.95rem; font-weight: 600; color: var(--bat-navy); display: flex; align-items: center; gap: 8px; }
+        
+        .ai-input-field, .api-key-input { width: 100%; padding: 12px 15px; border: 2px solid #e1e4e8; border-radius: 8px; outline: none; transition: border-color 0.2s; font-size: 0.95rem; }
+        .ai-input-field:focus, .api-key-input:focus { border-color: var(--bat-navy); }
+        .ai-btn { background: var(--bat-navy); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: background 0.2s; white-space: nowrap; }
+        .ai-btn:hover { background: #004080; }
+        .ai-chat-area { display: flex; flex-direction: column; gap: 15px; background: #f0f4f8; padding: 20px; border-radius: 12px; }
+        .ai-response-box { font-size: 0.95rem; line-height: 1.6; color: #333; min-height: 40px; }
+
+        @media (max-width: 768px) {
+            body { padding: 15px; } .header-container { margin-bottom: 20px; } h1 { font-size: 1.4rem; }
+            .container { grid-template-columns: 1fr; gap: 15px; } 
+            .card { padding: 20px; flex-direction: row; align-items: center; min-height: 100px; }
+            .card-header { margin-bottom: 0; margin-right: 20px; } 
+            .soil-card .card-title, .temp-card .card-title, .hum-card .card-title { display: none; }
+            .soil-card .card-header, .temp-card .card-header, .hum-card .card-header { margin-bottom: 0; flex-direction: row-reverse; gap: 15px; align-items: center; }
+            .value-box { font-size: 2.2rem; margin: 0; }
+            .charts-grid { grid-template-columns: 1fr; gap: 20px; } 
+            .filter-bar { flex-direction: column; align-items: stretch; gap: 15px; padding: 20px; }
+            .chart-container-inner { height: 280px; } .pie-container-inner { height: 220px; } 
+            .modal-content { width: 95%; max-height: 90vh; }
+            .info-grid { grid-template-columns: 1fr; gap: 15px; }
+            .device-select { width: 100%; min-width: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <h1><i class="ph-fill ph-plant" style="color: #556b2f;"></i> BAT BANGLADESH</h1>
+        <div class="subtitle">Smart Tobacco Field Monitoring System</div>
+        
+        <!-- Navigation -->
+        <div class="nav-tabs">
+            <button class="nav-btn active" onclick="switchView('dashboard')"><i class="ph-fill ph-squares-four"></i> Dashboard</button>
+            <button class="nav-btn" onclick="switchView('list')"><i class="ph-fill ph-list-dashes"></i> All Devices</button>
+        </div>
+
+        <!-- MAIN DEVICE STATUS BADGE -->
+        <div class="main-status-wrapper">
+            <span id="main-device-status" class="status-pill waiting">
+                <span class="status-dot"></span> <span id="status-text">Waiting for Data...</span>
+            </span>
+        </div>
+
+        <!-- Settings Button -->
+        <button class="settings-btn" onclick="openAIModal()" title="Settings & Controls">
+            <i class="ph ph-gear"></i>
+        </button>
+    </div>
+    
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboardView" class="view-section active">
+        <!-- Device Selector -->
+        <div class="device-selector-wrapper">
+            <span class="device-selector-label">Current Device:</span>
+            <select id="deviceSelect" class="device-select" onchange="changeDevice()">
+                <option value="" disabled selected>Loading devices...</option>
+            </select>
+        </div>
+
+        <div class="container">
+            <div class="card soil-card">
+                <div class="card-header">
+                    <h3 class="card-title">Soil Moisture</h3>
+                    <div class="icon-box"><i class="ph-fill ph-potted-plant"></i></div>
+                </div>
+                <div>
+                    <div class="value-box"><span id="s1-percent">--</span><span class="unit">%</span></div>
+                    <div class="sub-info"><i class="ph ph-sliders"></i> Raw: <span id="s1-raw">--</span></div>
+                </div>
+            </div>
+
+            <div class="card temp-card">
+                <div class="card-header">
+                    <h3 class="card-title">Temperature</h3>
+                    <div class="icon-box"><i class="ph-fill ph-thermometer-simple"></i></div>
+                </div>
+                <div>
+                    <div class="value-box"><span id="dht-temp">--</span><span class="unit">°C</span></div>
+                    <div class="sub-info">Field Temp</div>
+                </div>
+            </div>
+
+            <div class="card hum-card">
+                <div class="card-header">
+                    <h3 class="card-title">Humidity</h3>
+                    <div class="icon-box"><i class="ph-fill ph-drop"></i></div>
+                </div>
+                <div>
+                    <div class="value-box"><span id="dht-hum">--</span><span class="unit">%</span></div>
+                    <div class="sub-info">Air Moisture</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title"><i class="ph-fill ph-chart-line-up"></i> Field Analytics</div>
+        
+        <div class="analytics-wrapper">
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <span class="filter-label">From:</span>
+                    <input type="datetime-local" id="startDate" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">To:</span>
+                    <input type="datetime-local" id="endDate" class="filter-input">
+                </div>
+                <button class="filter-btn" onclick="applyFilter()">Apply Filter</button>
+                <button class="filter-btn reset" onclick="resetFilter()">Reset</button>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-title">Field Environmental Trends</span>
+                        <button class="reset-zoom-btn" onclick="resetChartZoom()"><i class="ph ph-magnifying-glass-minus"></i> Reset Zoom</button>
+                    </div>
+                    <div class="chart-container-inner">
+                        <canvas id="moistureChart"></canvas>
+                    </div>
+                    <div style="font-size:0.75rem; color:#999; margin-top:5px; text-align:center;">
+                        <i class="ph ph-hand-pointing"></i> Scroll/Pinch to Zoom & Drag to Pan
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-title">Harvest Readiness</span>
+                    </div>
+                    <div class="pie-container-inner">
+                        <canvas id="statusPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title"><i class="ph-fill ph-clock-counter-clockwise"></i> Recent History</div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Soil Moisture</th>
+                        <th>Analog (Raw)</th>
+                        <th>Temp</th>
+                        <th>Hum</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"><tr><td colspan="5">Loading data...</td></tr></tbody>
+            </table>
+        </div>
+
+        <div class="download-container">
+            <button class="download-btn" onclick="downloadPDF()">
+                <i class="ph-fill ph-file-pdf"></i> Download Report (PDF)
+            </button>
+        </div>
+    </div>
+
+    <!-- DEVICE LIST VIEW -->
+    <div id="deviceListView" class="view-section">
+        <div class="device-list-container">
+            <div class="section-title"><i class="ph-fill ph-broadcast"></i> Active Devices</div>
+            <div class="table-wrapper">
+                <table id="deviceListTable">
+                    <thead>
+                        <tr>
+                            <th>Device Name / ID</th>
+                            <th>Status</th>
+                            <th>Last Seen</th>
+                            <th>Soil</th>
+                            <th>Temp</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deviceListBody">
+                        <tr><td colspan="6" style="text-align:center;">Loading devices...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="aiModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="ph-fill ph-sliders-horizontal"></i> Field Settings</h2>
+                <button class="close-btn" onclick="closeAIModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- 1. System Status -->
+                <div class="system-status-box">
+                    <h3><i class="ph-fill ph-info"></i> System Info</h3>
+                    <div class="info-grid">
+                        <div class="info-item-modal">
+                            <span class="label">Connection</span>
+                            <span id="device-badge" class="badge waiting">Checking</span>
+                        </div>
+                        <div class="info-item-modal">
+                            <span class="label">IP Address</span>
+                            <span id="device-ip" class="val">N/A</span>
+                        </div>
+                        <div class="info-item-modal">
+                            <span class="label">Last Seen</span>
+                            <span id="device-time" class="val">--</span>
+                        </div>
+                        <div class="info-item-modal">
+                            <span class="label">Firmware</span>
+                            <span id="device-version" class="val" style="color:var(--tobacco-leaf);">--</span>
+                        </div>
+                         <div class="info-item-modal" style="grid-column: 1 / -1;">
+                            <span class="label">Device UID</span>
+                            <span id="device-uid" class="val" style="font-size: 0.85rem; color:#636e72;">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. REMOTE CONTROL -->
+                <div class="system-status-box" style="margin-top: 20px; border-color: var(--bat-navy); background: #e3f2fd;">
+                    <h3><i class="ph-fill ph-sliders"></i> Remote Control</h3>
+                    
+                    <!-- Interval Setting -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-size:0.8rem; font-weight:600; color:#555;">Data Update Interval (Minutes)</label>
+                        <div style="display:flex; gap:10px; margin-top:5px;">
+                            <input type="number" id="intervalInput" class="ai-input-field" placeholder="e.g. 15">
+                            <button class="ai-btn" onclick="sendCommand('setInterval')">Set Time</button>
+                        </div>
+                         <p style="font-size:0.75rem; color:#666; margin-top:5px;">
+                            Current Interval: <b id="conf-interval" style="color:var(--bat-navy);">--</b> mins
+                        </p>
+                    </div>
+                    
+                    <hr style="border: 0; border-top: 1px solid #bdc3c7; margin: 10px 0;">
+
+                    <!-- Calibration -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-size:0.8rem; font-weight:600; color:#555;">Sensor Calibration (Saved in Device)</label>
+                        <div style="display:flex; gap:10px; margin-top:5px;">
+                            <input type="number" id="dryInput" class="ai-input-field" placeholder="Dry (e.g. 3200)">
+                            <button class="ai-btn" onclick="sendCommand('setDry')">Set Dry</button>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <input type="number" id="wetInput" class="ai-input-field" placeholder="Wet (e.g. 1400)">
+                            <button class="ai-btn" onclick="sendCommand('setWet')">Set Wet</button>
+                        </div>
+                        <p style="font-size:0.75rem; color:#666; margin-top:5px;">
+                            Config: Dry: <b id="conf-dry">--</b> | Wet: <b id="conf-wet">--</b>
+                        </p>
+                    </div>
+
+                    <!-- Restart -->
+                    <button class="ai-btn" style="width:100%; background:#e74c3c;" onclick="sendCommand('restart')">
+                        <i class="ph-fill ph-power"></i> RESTART DEVICE
+                    </button>
+                </div>
+
+                <!-- 3. Rename Device -->
+                <div class="rename-section">
+                    <div class="section-header">
+                        <i class="ph-fill ph-pencil-simple"></i> Rename Device
+                    </div>
+                    <div class="rename-input-group">
+                        <input type="text" id="renameInput" class="ai-input-field" placeholder="Enter friendly name (e.g. North Field)">
+                        <button class="ai-btn" onclick="saveDeviceName()">Save Name</button>
+                    </div>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid #eee; width: 100%;">
+
+                <!-- 4. AI -->
+                <div>
+                    <h3 style="margin:0 0 10px 0; color:var(--bat-navy); font-size:0.9rem; display:flex; align-items:center; gap:5px; text-transform:uppercase;">
+                        <i class="ph-fill ph-magic-wand"></i> BATB Agronomist AI
+                    </h3>
+                    <div class="ai-chat-area">
+                        <div class="ai-response-box" id="ai-output">👋 Select a device to analyze.</div>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <input type="text" id="ai-prompt" class="ai-input-field" placeholder="Ask expert...">
+                            <button class="ai-btn" onclick="askAI()"><i class="ph-fill ph-paper-plane-right"></i></button>
+                        </div>
+                        <button class="ai-btn" style="width:100%; margin-top:5px; background:#556b2f;" onclick="analyzeGarden()">
+                            <i class="ph-fill ph-check-circle"></i> Check Harvest Status
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 5. API Key -->
+                <div class="api-key-section">
+                    <div class="section-header">
+                        <i class="ph-fill ph-key"></i> Gemini API Key
+                    </div>
+                    <div class="rename-input-group">
+                        <input type="password" id="apiKeyInput" class="api-key-input" placeholder="Paste Gemini API Key...">
+                        <button class="ai-btn" onclick="saveApiKey()">Save Key</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = "https://batbv3.espserver.site";
+
+        let allData = [];
+        let deviceData = [];
+        let filteredData = [];
+        let uniqueDevices = new Set();
+        let deviceNameMap = {}; 
+        let selectedDeviceUid = "";
+        
+        let myChart, myPieChart;
+        const socket = io("https://batbv3.espserver.site", { transports: ['websocket', 'polling'] });
+
+        // --- SAFE DOM UPDATE HELPER ---
+        function setText(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.innerText = text;
+        }
+
+        // --- Helper: Beautiful Toast ---
+        function showToast(message, type = "info") {
+            let colors = {
+                success: "linear-gradient(135deg, #00b09b, #96c93d)",
+                error: "linear-gradient(135deg, #ff5f6d, #ffc371)",
+                info: "linear-gradient(135deg, #003366, #2193b0)"
+            };
+            Toastify({
+                text: message,
+                duration: 3000,
+                close: true,
+                gravity: "bottom", 
+                position: "right", 
+                backgroundColor: colors[type] || colors.info,
+                stopOnFocus: true,
+                style: { borderRadius: "12px", boxShadow: "0 10px 20px rgba(0,0,0,0.15)", padding: "12px 20px" }
+            }).showToast();
+        }
+
+        function formatTimeAMPM(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString.split(' ')[1] || dateString; 
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+        }
+
+        function switchView(viewName) {
+            const buttons = document.querySelectorAll('.nav-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            document.getElementById('dashboardView').classList.remove('active');
+            document.getElementById('deviceListView').classList.remove('active');
+
+            if(viewName === 'dashboard') {
+                buttons[0].classList.add('active');
+                document.getElementById('dashboardView').classList.add('active');
+                showToast("Switched to Dashboard", "info");
+            } else {
+                buttons[1].classList.add('active');
+                document.getElementById('deviceListView').classList.add('active');
+                // Force initial render of the list if needed
+                renderDeviceListTable();
+                showToast("Viewing Device List", "info");
+            }
+        }
+
+        // --- Real-time Row Update & Creation ---
+        function updateDeviceRow(d) {
+            const tbody = document.getElementById('deviceListBody');
+            let row = document.getElementById(`device-row-${d.uid}`);
+            
+            const name = deviceNameMap[d.uid] || d.uid;
+            const now = new Date();
+            const dTime = new Date(d.dateTime); 
+            const diffMs = now - dTime; 
+            const isOnline = diffMs < 1800000; // 30 mins
+
+            const statusHtml = isOnline 
+                ? '<span class="badge online">Active</span>' 
+                : '<span class="badge offline">Offline</span>';
+            
+            const soilVal = (d.soil1?.percent !== undefined) ? d.soil1.percent + "%" : "--";
+            const tempVal = (d.dht?.temp !== undefined) ? d.dht.temp + "°C" : "--";
+            const soilColor = (d.soil1?.percent < 40) ? '#d63031' : '#0f5132';
+
+            const innerHTML = `
+                <td style="font-weight:600; color:var(--bat-navy);">${name}</td>
+                <td>${statusHtml}</td>
+                <td style="font-size:0.85rem;" data-last-seen="${d.dateTime}">${formatTimeAMPM(d.dateTime)}</td>
+                <td style="color:${soilColor}; font-weight:600;">${soilVal}</td>
+                <td>${tempVal}</td>
+                <td>
+                    <button class="action-btn" onclick="event.stopPropagation(); selectAndSwitch('${d.uid}')">
+                        <i class="ph-fill ph-eye"></i> View
+                    </button>
+                </td>
+            `;
+
+            if (row) {
+                row.innerHTML = innerHTML;
+                // Flash Animation
+                row.classList.remove('flash-row');
+                void row.offsetWidth; // Trigger reflow
+                row.classList.add('flash-row');
+            } else {
+                // Create new row
+                // Remove "No devices found" if it exists
+                if(tbody.innerHTML.includes("No devices found")) tbody.innerHTML = "";
+                
+                row = document.createElement('tr');
+                row.id = `device-row-${d.uid}`;
+                row.className = 'device-row flash-row';
+                row.onclick = () => selectAndSwitch(d.uid);
+                row.innerHTML = innerHTML;
+                tbody.prepend(row); // Add new to top
+            }
+        }
+
+        // --- Full Render (Initial) ---
+        function renderDeviceListTable() {
+            const tbody = document.getElementById('deviceListBody');
+            
+            // We need to merge latest data from `allData` with `deviceNameMap` to show offline devices too
+            const latestPerDevice = {};
+            allData.forEach(d => {
+                if(d.uid && !latestPerDevice[d.uid]) { latestPerDevice[d.uid] = d; }
+            });
+            
+            const allUIDs = new Set([...Object.keys(latestPerDevice), ...Object.keys(deviceNameMap)]);
+            
+            if(allUIDs.size === 0) {
+                tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>No devices found</td></tr>";
+                return;
+            }
+            
+            tbody.innerHTML = ""; // Clear only on full render
+            
+            Array.from(allUIDs).forEach(uid => {
+                const d = latestPerDevice[uid];
+                // If we have data, use updateDeviceRow logic manually, else show offline placeholder
+                if (d) {
+                    const name = deviceNameMap[uid] || uid;
+                    const now = new Date(); const dTime = new Date(d.dateTime); 
+                    const diffMs = now - dTime; const isOnline = diffMs < 1800000; 
+                    const statusHtml = isOnline ? '<span class="badge online">Active</span>' : '<span class="badge offline">Offline</span>';
+                    const soilColor = (d.soil1?.percent < 40) ? '#d63031' : '#0f5132';
+                    
+                    const tr = document.createElement('tr');
+                    tr.id = `device-row-${uid}`;
+                    tr.className = 'device-row';
+                    tr.onclick = () => selectAndSwitch(uid);
+                    tr.innerHTML = `
+                        <td style="font-weight:600; color:var(--bat-navy);">${name}</td>
+                        <td>${statusHtml}</td>
+                        <td style="font-size:0.85rem;" data-last-seen="${d.dateTime}">${formatTimeAMPM(d.dateTime)}</td>
+                        <td style="color:${soilColor}; font-weight:600;">${d.soil1?.percent}%</td>
+                        <td>${d.dht?.temp}°C</td>
+                        <td><button class="action-btn" onclick="event.stopPropagation(); selectAndSwitch('${uid}')"><i class="ph-fill ph-eye"></i> View</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                } else {
+                    // Known device but no recent data in allData buffer
+                    const name = deviceNameMap[uid] || uid;
+                    const tr = document.createElement('tr');
+                    tr.id = `device-row-${uid}`;
+                    tr.className = 'device-row';
+                    tr.onclick = () => selectAndSwitch(uid);
+                    tr.innerHTML = `
+                        <td style="font-weight:600; color:var(--bat-navy);">${name}</td>
+                        <td><span class="badge offline">Offline</span></td>
+                        <td style="font-size:0.85rem;" data-last-seen="">Unknown</td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td><button class="action-btn" onclick="event.stopPropagation(); selectAndSwitch('${uid}')"><i class="ph-fill ph-eye"></i> View</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+        
+        // --- Status Auto-Refresher ---
+        function checkOfflineStatus() {
+            const rows = document.querySelectorAll('.device-row');
+            rows.forEach(row => {
+                const lastSeenAttr = row.querySelector('[data-last-seen]')?.getAttribute('data-last-seen');
+                if(lastSeenAttr) {
+                    const dTime = new Date(lastSeenAttr);
+                    const now = new Date();
+                    const diffMs = now - dTime;
+                    const statusCell = row.cells[1]; // 2nd column
+                    if (diffMs >= 1800000 && statusCell.innerText.includes("Active")) {
+                         statusCell.innerHTML = '<span class="badge offline">Offline</span>';
+                    }
+                }
+            });
+        }
+        // Run offline check every minute
+        setInterval(checkOfflineStatus, 60000);
+
+
+        function selectAndSwitch(uid) {
+            selectedDeviceUid = uid;
+            document.getElementById('deviceSelect').value = uid;
+            filterDataByDevice();
+            switchView('dashboard');
+            const name = deviceNameMap[uid] || uid;
+            showToast(`Selected: ${name}`, "success");
+        }
+
+        async function sendCommand(type) {
+            if(!selectedDeviceUid) { showToast("Select a device first!", "error"); return; }
+            
+            let value = 0;
+            if (type === 'setDry') {
+                value = document.getElementById('dryInput').value;
+                if(!value) { showToast("Enter Dry Value", "error"); return; }
+            } else if (type === 'setWet') {
+                value = document.getElementById('wetInput').value;
+                if(!value) { showToast("Enter Wet Value", "error"); return; }
+            } else if (type === 'setInterval') {
+                value = document.getElementById('intervalInput').value;
+                if(!value || value < 1) { showToast("Enter valid minutes", "error"); return; }
+            } else if (type === 'restart') {
+                if(!confirm("Are you sure you want to restart this device?")) return;
+                value = 1;
+            }
+
+            showToast("Sending Command...", "info");
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/send-command`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: selectedDeviceUid, command: type, value: value })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showToast("Command Queued! Device will update shortly.", "success");
+                    document.getElementById('dryInput').value = "";
+                    document.getElementById('wetInput').value = "";
+                    document.getElementById('intervalInput').value = "";
+                } else {
+                    showToast("Failed to send command", "error");
+                }
+            } catch(e) { showToast("Server Error", "error"); }
+        }
+
+        async function fetchDeviceNames() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/device-names`);
+                const contentType = res.headers.get("content-type");
+                if (res.ok && contentType && contentType.includes("application/json")) {
+                    deviceNameMap = await res.json();
+                    updateDeviceDropdown(); 
+                }
+            } catch(e) { console.error("Failed to fetch names", e); }
+        }
+
+        async function saveDeviceName() {
+            const newName = document.getElementById('renameInput').value;
+            if(!selectedDeviceUid || !newName) { showToast("Enter a name first!", "error"); return; }
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/device-name`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: selectedDeviceUid, name: newName })
+                });
+                const contentType = res.headers.get("content-type");
+                if (res.ok && contentType && contentType.includes("application/json")) {
+                    const data = await res.json();
+                    if(data.success) {
+                        deviceNameMap[selectedDeviceUid] = newName;
+                        showToast("Device renamed successfully!", "success");
+                        updateDeviceDropdown();
+                        document.getElementById('deviceSelect').value = selectedDeviceUid;
+                        // Update row if exists
+                        const row = document.getElementById(`device-row-${selectedDeviceUid}`);
+                        if(row) row.cells[0].style.color = 'var(--bat-navy)'; 
+                        if(row) row.cells[0].innerText = newName;
+                    }
+                }
+            } catch(e) { showToast("Error", "error"); }
+        }
+
+        socket.on('name-updated', (data) => {
+            deviceNameMap[data.uid] = data.name;
+            updateDeviceDropdown();
+            if(selectedDeviceUid === data.uid) {
+                document.getElementById('deviceSelect').value = selectedDeviceUid;
+            }
+            // Update row name live
+            const row = document.getElementById(`device-row-${data.uid}`);
+            if(row) row.cells[0].innerText = data.name;
+        });
+
+        function updateDeviceList(dataList) {
+            let changed = false;
+            dataList.forEach(item => {
+                if(item.uid && !uniqueDevices.has(item.uid)) { uniqueDevices.add(item.uid); changed = true; }
+            });
+            if(changed) { updateDeviceDropdown(); } // Only update dropdown here, table handled by init or live
+        }
+
+        function updateDeviceDropdown() {
+            const select = document.getElementById('deviceSelect');
+            const currentVal = select.value; 
+            select.innerHTML = "";
+            if(uniqueDevices.size === 0) {
+                const opt = document.createElement('option'); opt.text = "Searching devices..."; opt.disabled = true; opt.selected = true; select.add(opt); return;
+            }
+            uniqueDevices.forEach(uid => {
+                const opt = document.createElement('option'); opt.value = uid;
+                const friendlyName = deviceNameMap[uid] ? `${deviceNameMap[uid]}` : `Device: ${uid}`;
+                opt.text = friendlyName; select.add(opt);
+            });
+            if(currentVal && uniqueDevices.has(currentVal)) { select.value = currentVal; } 
+            else if(!selectedDeviceUid && uniqueDevices.size > 0) {
+                selectedDeviceUid = Array.from(uniqueDevices)[0];
+                select.value = selectedDeviceUid; filterDataByDevice();
+            }
+        }
+
+        function changeDevice() {
+            selectedDeviceUid = document.getElementById('deviceSelect').value;
+            if(deviceNameMap[selectedDeviceUid]) document.getElementById('renameInput').value = deviceNameMap[selectedDeviceUid];
+            else document.getElementById('renameInput').value = "";
+            filterDataByDevice();
+            const name = deviceNameMap[selectedDeviceUid] || selectedDeviceUid;
+            showToast(`Switched to: ${name}`, "info");
+        }
+
+        function filterDataByDevice() {
+            if(!selectedDeviceUid) return;
+            deviceData = allData.filter(d => d.uid === selectedDeviceUid);
+            if(document.getElementById('startDate').value) { applyFilter(); } 
+            else {
+                filteredData = deviceData;
+                updateUI(filteredData.length > 0 ? filteredData[0] : null);
+                updateCharts(filteredData);
+                updateTable(filteredData);
+            }
+        }
+
+        function openAIModal() { document.getElementById('aiModal').style.display = 'flex'; const k = localStorage.getItem('gemini_api_key'); if(k) document.getElementById('apiKeyInput').value = k; }
+        function closeAIModal() { document.getElementById('aiModal').style.display = 'none'; }
+        function saveApiKey() { 
+            const k = document.getElementById('apiKeyInput').value; 
+            if(k) { localStorage.setItem('gemini_api_key', k); showToast("API Key Saved!", "success"); } 
+            else { showToast("Please enter a key", "error"); }
+        }
+
+        async function callGeminiAPI(promptText) {
+            const apiKey = localStorage.getItem('gemini_api_key');
+            if (!apiKey) { showToast("Save API Key first!", "error"); return; }
+            const out = document.getElementById('ai-output');
+            out.innerHTML = 'Consulting BATB Database...';
+            showToast("Asking AI Expert...", "info");
+            
+            const s1 = document.getElementById('s1-percent').innerText;
+            const temp = document.getElementById('dht-temp').innerText;
+            const ver = document.getElementById('device-version').innerText;
+            const name = deviceNameMap[selectedDeviceUid] || selectedDeviceUid;
+            const context = `Expert agronomist for BATB. Device: ${name} (FW: ${ver}). Data: Soil:${s1}%, Temp:${temp}°C. Query: ${promptText}. BATB Rules: Soil 40-70% optimal. Short answer with emojis.`;
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: context }] }] })
+                });
+                const d = await res.json();
+                if(d.error) throw new Error(d.error.message);
+                out.innerHTML = marked.parse(d.candidates[0].content.parts[0].text);
+                showToast("Advice Received!", "success");
+            } catch(e) { out.innerHTML = "Error: " + e.message; showToast("AI Error", "error"); }
+        }
+        function analyzeGarden() { callGeminiAPI("Is this specific field ready for harvesting?"); }
+        function askAI() { const q = document.getElementById('ai-prompt').value; if(q) callGeminiAPI(q); }
+
+        socket.on('connect', () => { showToast("Connected to Server", "success"); });
+        socket.on('disconnect', () => { showToast("Disconnected", "error"); });
+
+        setInterval(() => {
+            const statusEl = document.getElementById('main-device-status');
+            const statusText = document.getElementById('status-text');
+            
+            if(filteredData.length > 0) {
+                const last = filteredData[0];
+                const now = new Date();
+                const dTime = new Date(last.dateTime);
+                const diffMs = now - dTime;
+                
+                if (diffMs < 1800000) { 
+                    statusEl.className = "status-pill online";
+                    statusText.innerText = "CONNECTED";
+                } else {
+                    statusEl.className = "status-pill offline";
+                    statusText.innerText = "OFFLINE (>30m)";
+                }
+            } else {
+                statusEl.className = "status-pill waiting";
+                statusText.innerText = "WAITING FOR DATA...";
+            }
+        }, 5000);
+
+        function updateUI(data) {
+            if(!data) {
+                setText('s1-percent', "--");
+                setText('s1-raw', "--");
+                setText('dht-temp', "--");
+                setText('dht-hum', "--");
+                setText('device-ip', "N/A");
+                setText('device-uid', "--");
+                setText('device-time', "--");
+                setText('device-version', "--");
+                return;
+            }
+            lastDataTime = new Date();
+            
+            if(data.soil1) {
+                setText('s1-percent', data.soil1.percent);
+                setText('s1-raw', data.soil1.raw);
+            }
+            if(data.dht) {
+                setText('dht-temp', data.dht.temp);
+                setText('dht-hum', data.dht.hum);
+            }
+            setText('device-ip', data.ip || "N/A");
+            if(data.uid) setText('device-uid', data.uid);
+            if(data.dateTime) setText('device-time', formatTimeAMPM(data.dateTime));
+            if(data.version) setText('device-version', data.version);
+            
+            // Update Config Display in Modal
+            if(data.config) {
+                setText('conf-dry', data.config.dry || '--');
+                setText('conf-wet', data.config.wet || '--');
+                setText('conf-interval', data.config.interval || '--');
+            }
+        }
+
+        function applyFilter() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            if (!start || !end) { showToast("Select dates first", "error"); return; }
+            const sT = new Date(start).getTime(); const eT = new Date(end).getTime();
+            filteredData = deviceData.filter(d => { const t = new Date(d.dateTime).getTime(); return t >= sT && t <= eT; });
+            updateCharts(filteredData); updateTable(filteredData);
+            showToast("Date Filter Applied", "success");
+        }
+        function resetFilter() { 
+            document.getElementById('startDate').value=""; document.getElementById('endDate').value=""; 
+            filteredData=deviceData; updateCharts(filteredData); updateTable(filteredData);
+            showToast("Filters Reset", "info");
+        }
+        function resetChartZoom() { 
+            if(myChart) { myChart.resetZoom(); showToast("Chart Zoom Reset", "info"); }
+        }
+
+        function updateTable(list) {
+            const tbody = document.getElementById('table-body'); tbody.innerHTML = "";
+            if(list.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No data</td></tr>"; return; }
+            list.slice(0, 15).forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${formatTimeAMPM(row.dateTime)}</td>
+                    <td style="color:${(row.soil1?.percent<40)?'#d63031':'#0f5132'}">${row.soil1?.percent||'-'}%</td>
+                    <td style="font-family:monospace; color:#666;">${row.soil1?.raw || '-'}</td>
+                    <td>${row.dht?.temp||'-'}°</td>
+                    <td>${row.dht?.hum||'-'}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateCharts(list) {
+            const cl = [...list].reverse(); 
+            if(!myChart) {
+                const ctx = document.getElementById('moistureChart').getContext('2d');
+                myChart = new Chart(ctx, { type: 'line', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { display: false }, y: { beginAtZero: true, max: 100 } }, plugins: { zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } } });
+            }
+            myChart.data.labels = cl.map(d => formatTimeAMPM(d.dateTime));
+            
+            myChart.data.datasets = [
+                { label: 'Soil (%)', borderColor: '#8B4513', backgroundColor: 'rgba(139, 69, 19, 0.1)', data: cl.map(d => d.soil1?.percent||0), tension: 0.4, fill: false },
+                { label: 'Temp (°C)', borderColor: '#FF8C00', backgroundColor: 'rgba(255, 140, 0, 0.1)', data: cl.map(d => d.dht?.temp||0), tension: 0.4, fill: false, borderDash: [5, 5] },
+                { label: 'Hum (%)', borderColor: '#00BFFF', backgroundColor: 'rgba(0, 191, 255, 0.1)', data: cl.map(d => d.dht?.hum||0), tension: 0.4, fill: false }
+            ];
+            myChart.update();
+
+            let dry=0, ready=0, wet=0;
+            list.forEach(d => { const v = d.soil1?.percent||0; if(v<40) dry++; else if(v>70) wet++; else ready++; });
+            if(!myPieChart) {
+                const ctxP = document.getElementById('statusPieChart').getContext('2d');
+                myPieChart = new Chart(ctxP, { type: 'doughnut', data: { labels: ['Stress (Dry)', 'Optimal', 'Risk (Wet)'], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+            }
+            myPieChart.data.datasets = [{ data: [dry, ready, wet], backgroundColor: ['#dc3545', '#198754', '#0d6efd'], borderWidth: 0 }];
+            myPieChart.update();
+        }
+
+        function downloadPDF() {
+            showToast("Generating PDF Report...", "info");
+            const { jsPDF } = window.jspdf; const doc = new jsPDF();
+            doc.setFontSize(18); doc.setTextColor(0, 51, 102); doc.text("BAT Bangladesh - Smart Farm Report", 14, 20);
+            doc.setFontSize(10); doc.setTextColor(100); 
+            const devName = deviceNameMap[selectedDeviceUid] || selectedDeviceUid || "All";
+            
+            doc.text(`Device Name: ${devName}`, 14, 30);
+            doc.text(`Device UID: ${selectedDeviceUid || 'N/A'}`, 14, 36);
+            // Fix: Get latest version safely
+            const latestVer = (deviceData.length > 0) ? deviceData[0].version : '-';
+            doc.text(`Firmware Version: ${latestVer}`, 14, 42);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 48);
+            
+            const col = ["Date", "Time", "Soil (%)", "Analog", "Temp", "Hum"];
+            const rows = [];
+            const data = filteredData.length > 0 ? filteredData : deviceData;
+            
+            data.forEach(r => { 
+                const d=r.dateTime?r.dateTime.split(' ')[0]:'-'; 
+                const t=formatTimeAMPM(r.dateTime); 
+                rows.push([d, t, r.soil1?.percent, r.soil1?.raw, r.dht?.temp, r.dht?.hum]); 
+            });
+            
+            doc.autoTable({ head: [col], body: rows, startY: 55, theme: 'striped', headStyles: { fillColor: [0, 51, 102] }, styles: { fontSize: 9 } });
+            doc.save(`BATB_Report_${devName}.pdf`);
+            showToast("PDF Downloaded!", "success");
+        }
+
+        async function loadData() {
+            await fetchDeviceNames();
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/esp32`);
+                allData = await res.json();
+                updateDeviceList(allData);
+                // Also init table if view is active
+                if(document.getElementById('deviceListView').classList.contains('active')) {
+                    renderDeviceListTable();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        socket.on('new-data', (data) => {
+            allData.unshift(data); if(allData.length > 5000) allData.pop(); 
+            updateDeviceList([data]);
+            
+            if(selectedDeviceUid && data.uid === selectedDeviceUid && !document.getElementById('startDate').value) {
+                deviceData.unshift(data); filteredData = deviceData;
+                updateUI(data); updateCharts(filteredData); updateTable(filteredData);
+            }
+            
+            // --- KEY UPDATE FOR REALTIME LIST ---
+            // Only update the row if list view is active
+            if(document.getElementById('deviceListView').classList.contains('active')) {
+                updateDeviceRow(data);
+            }
+        });
+
+        loadData();
+    </script>
+</body>
+</html>
