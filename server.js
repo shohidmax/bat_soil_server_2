@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
@@ -19,27 +19,25 @@ app.use(express.static('public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// MongoDB URI (আপনার নিজস্ব URI ব্যবহার করুন)
 const uri = "mongodb+srv://atifsupermart202199:FGzi4j6kRnYTIyP9@cluster0.bfulggv.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
-// --- [গুরুত্বপূর্ণ] পেন্ডিং কমান্ড স্টোর (মেমোরিতে) ---
 let pendingCommands = {};
 
 io.on('connection', (socket) => {
-  console.log('Socket Client Connected');
+  console.log('User connected via Socket.io');
 });
 
 async function run() {
   try {
     await client.connect();
-    console.log('DB connected 3');
+    console.log('DB connected');
     
     const db = client.db('Esp32data4');
     const EspCollection = db.collection('espdata2');
     const DeviceMetaCollection = db.collection('device_metadata');
 
-    // 1. Device Name API
+    // --- 1. Device Name API ---
     app.post('/api/device-name', async (req, res) => {
       try {
         const { uid, name } = req.body;
@@ -58,7 +56,7 @@ async function run() {
       } catch (err) { res.status(500).send({ error: "Error fetching names" }); }
     });
 
-    // --- 2. [গুরুত্বপূর্ণ] Send Command API (Frontend calls this) ---
+    // --- 2. Send Command API ---
     app.post('/api/send-command', (req, res) => {
       const { uid, command, value } = req.body;
       if (!uid || !command) return res.status(400).send({ error: "Missing params" });
@@ -74,51 +72,69 @@ async function run() {
       } else if (command === 'setInterval') {
         pendingCommands[uid].setInterval = parseInt(value);
       }
-
-      console.log(`Command queued for ${uid}:`, pendingCommands[uid]);
-      
-      // সকেট দিয়ে কনফার্মেশন পাঠানো (অপশনাল)
-      io.emit('command-queued', { uid, command });
-      
       res.send({ success: true, message: "Command queued" });
     });
 
-    // --- 3. [গুরুত্বপূর্ণ] Sensor Data & Command Response API (ESP32 calls this) ---
+    // --- 3. Sensor Data & Command Response API ---
     app.post('/api/esp32p', async (req, res) => {
       try {
         const sensorData = req.body;
         const uid = sensorData.uid;
         
-        // Save Data
         await EspCollection.insertOne(sensorData);
         io.emit('new-data', sensorData);
 
-        // Check for pending commands for this specific device
         let responsePayload = { status: "success" };
-        
         if (uid && pendingCommands[uid]) {
-          // Add commands to response
           responsePayload = { ...responsePayload, ...pendingCommands[uid] };
-          console.log(`Sending pending command to ${uid}:`, pendingCommands[uid]);
-          
-          // Clear pending commands after sending
           delete pendingCommands[uid];
         }
-
-        res.json(responsePayload); // Send JSON response to ESP32
-      } catch (err) {
-        console.error("Error:", err);
-        res.status(500).send("Server Error");
-      }
+        res.json(responsePayload);
+      } catch (err) { res.status(500).send("Server Error"); }
     });
 
+    // --- 4. Recent Data API (Limited for Dashboard) ---
     app.get('/api/esp32', async(req, res) =>{
       const cursor = EspCollection.find({}).sort({_id: -1}).limit(500);
       const Data = await cursor.toArray();
       res.send(Data);
     });
 
-    app.get("/", (req, res) => res.send("Server Running v2.0"));
+    // --- 5. REPORT API (Unlimited based on Date Range) ---
+    // এই API টি ডাটাবেস থেকে ফিল্টার করে সব ডাটা আনবে ডাউনলোডের জন্য
+    app.get('/api/report', async (req, res) => {
+      try {
+        const { uid, startDate, endDate } = req.query;
+        
+        let query = {};
+        if (uid && uid !== 'undefined') {
+            query.uid = uid;
+        }
+
+        // Date Range Query (String Comparison for YYYY-MM-DD HH:MM:SS)
+        if (startDate && endDate) {
+            // Input format: 2025-11-23T03:33 -> DB format: 2025-11-23 03:33:00
+            const startStr = startDate.replace('T', ' ') + ":00";
+            const endStr = endDate.replace('T', ' ') + ":59";
+            
+            query.dateTime = {
+                $gte: startStr,
+                $lte: endStr
+            };
+        }
+
+        // Fetch ALL matching data (No Limit)
+        const cursor = EspCollection.find(query).sort({ _id: -1 });
+        const data = await cursor.toArray();
+        
+        res.send(data);
+      } catch (err) {
+        console.error("Report Error:", err);
+        res.status(500).send({ error: "Failed to fetch report data" });
+      }
+    });
+
+    app.get("/", (req, res) => res.send("Server Running v2.1 (Report Enabled)"));
 
   } finally {}
 }
