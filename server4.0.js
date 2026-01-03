@@ -38,54 +38,53 @@ async function run() {
     const EspCollection = db.collection('espdata2');
     const DeviceMetaCollection = db.collection('device_metadata');
 
-    // Admin Route
+    // --- ADMIN ROUTE ---
     app.get('/admin', (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'admin.html'));
     });
 
-    // --- API: Update Device Metadata (Name, Lat, Lon, Visibility) ---
-    app.post('/api/device-metadata', async (req, res) => {
-        const { uid, name, lat, lon, isHidden } = req.body;
+    // --- API: Toggle Device Visibility (Admin) ---
+    app.post('/api/admin/toggle-visibility', async (req, res) => {
+        const { uid, isHidden } = req.body;
         try {
-            const updateDoc = { uid };
-            if (name !== undefined) updateDoc.name = name;
-            if (lat !== undefined) updateDoc.lat = lat;
-            if (lon !== undefined) updateDoc.lon = lon;
-            if (isHidden !== undefined) updateDoc.isHidden = isHidden;
-
             await DeviceMetaCollection.updateOne(
                 { uid }, 
-                { $set: updateDoc }, 
+                { $set: { uid, isHidden: isHidden } }, 
                 { upsert: true }
             );
-            io.emit('meta-updated', updateDoc); // Notify clients
+            io.emit('visibility-updated', { uid, isHidden }); // Notify clients
             res.send({ success: true });
-        } catch (e) { res.status(500).send({ error: "Failed to update" }); }
+        } catch (e) { res.status(500).send({ error: "Failed" }); }
     });
 
-    // --- API: Get All Metadata ---
+    // --- API: Get Device Metadata (Names & Visibility) ---
     app.get('/api/device-metadata', async (req, res) => {
       try {
         const docs = await DeviceMetaCollection.find({}).toArray();
         const metaMap = {};
         docs.forEach(doc => { 
-            metaMap[doc.uid] = { 
-                name: doc.name, 
-                lat: doc.lat, 
-                lon: doc.lon, 
-                isHidden: doc.isHidden 
-            }; 
+            metaMap[doc.uid] = { name: doc.name, isHidden: doc.isHidden }; 
         });
         res.send(metaMap);
       } catch (err) { res.status(500).send({ error: "Error fetching metadata" }); }
     });
     
-    // Legacy API for simple name map (Optional, kept for compatibility)
+    // Legacy support for name only
     app.get('/api/device-names', async (req, res) => {
         const docs = await DeviceMetaCollection.find({}).toArray();
         const nameMap = {};
         docs.forEach(doc => { nameMap[doc.uid] = doc.name; });
         res.send(nameMap);
+    });
+
+    // --- API: Save Name ---
+    app.post('/api/device-name', async (req, res) => {
+      try {
+        const { uid, name } = req.body;
+        await DeviceMetaCollection.updateOne({ uid }, { $set: { uid, name } }, { upsert: true });
+        io.emit('name-updated', { uid, name });
+        res.send({ success: true });
+      } catch (err) { res.status(500).send({ error: "Error saving name" }); }
     });
 
     // --- Command API ---
@@ -115,7 +114,6 @@ async function run() {
         if (uid && pendingCommands[uid]) {
           responsePayload = { ...responsePayload, ...pendingCommands[uid] };
           delete pendingCommands[uid];
-          console.log(`Command sent to ${uid}`);
         }
         res.json(responsePayload);
       } catch (err) { res.status(500).send("Server Error"); }
@@ -127,6 +125,7 @@ async function run() {
       res.send(Data);
     });
 
+    // Report API
     app.get('/api/report', async (req, res) => {
       try {
         const { uid, startDate, endDate } = req.query;
@@ -140,10 +139,10 @@ async function run() {
       } catch (err) { res.status(500).send({ error: "Failed" }); }
     });
 
-    app.get("/", (req, res) => res.send("Server Running v3.1"));
+    app.get("/", (req, res) => res.send("Server Running v3.0"));
 
   } finally {}
 }
-run().catch(console.dir);
+run().catch(console.dir); 
 
 http.listen(port, () => console.log(`Server running on port ${port}`));

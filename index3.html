@@ -6,13 +6,18 @@
     <title>BAT Bangladesh - Multi-Device Farm</title>
     
     <!-- Scripts -->
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- Socket.io CDN Updated to cdnjs for better stability -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Excel Export Library (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
@@ -43,7 +48,7 @@
         .nav-btn.active { background: var(--bat-navy); color: white; border-color: var(--bat-navy); box-shadow: 0 6px 15px rgba(0, 51, 102, 0.25); }
         .nav-btn:hover:not(.active) { background: #f8f9fa; transform: translateY(-2px); }
 
-        /* Main Device Status Badge */
+        /* Main Device Status Badge (Center) */
         .main-status-wrapper { display: flex; justify-content: center; margin-bottom: 20px; }
         .status-pill {
             padding: 6px 18px; border-radius: 50px; font-size: 0.85rem; font-weight: 600;
@@ -88,7 +93,7 @@
         .filter-group { display: flex; align-items: center; gap: 10px; flex-grow: 1; }
         .filter-label { font-size: 0.9rem; color: var(--text-main); font-weight: 600; }
         .filter-input { padding: 10px 15px; border: 1px solid #ced4da; border-radius: 8px; font-family: 'Poppins', sans-serif; color: var(--text-main); outline: none; font-size: 0.9rem; flex-grow: 1; background: white; }
-        .filter-btn { background: var(--bat-navy); color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-family: 'Poppins', sans-serif; font-weight: 600; transition: opacity 0.2s; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .filter-btn { background: var(--bat-navy); color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-family: 'Poppins', sans-serif; font-weight: 600; transition: opacity 0.2s; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .filter-btn.reset { background: #b0b8c1; color: white; }
         .filter-btn:hover { opacity: 0.9; transform: translateY(-1px); }
         
@@ -98,7 +103,7 @@
         .chart-title { font-size: 1.1rem; font-weight: 600; color: var(--bat-navy); }
         .chart-container-inner { position: relative; height: 350px; width: 100%; }
         .pie-container-inner { position: relative; height: 300px; width: 100%; display: flex; justify-content: center; }
-        .reset-zoom-btn { background: #f1f2f6; border: 1px solid #dee2e6; color: var(--text-light); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s; }
+        .reset-zoom-btn { background: #f1f3f5; border: 1px solid #dee2e6; color: var(--text-light); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s; }
         .reset-zoom-btn:hover { background: #e9ecef; color: var(--bat-navy); }
 
         .table-wrapper { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); max-width: 1200px; margin: 0 auto 30px auto; overflow-x: auto; }
@@ -107,7 +112,7 @@
         td { padding: 18px; border-bottom: 1px solid #f1f3f5; color: var(--text-main); font-size: 0.95rem; }
         tr:last-child td { border-bottom: none; }
         
-        .download-container { max-width: 1200px; margin: 0 auto 50px auto; text-align: right; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+        .download-container { max-width: 1200px; margin: 0 auto 50px auto; text-align: right; display: flex; justify-content: flex-end; gap: 15px; flex-wrap: wrap; }
         .download-btn { background: var(--bat-navy); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0, 51, 102, 0.2); text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.9rem; }
         .download-btn:hover { background: #004080; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 51, 102, 0.3); }
         .download-btn.excel { background: #1D6F42; box-shadow: 0 4px 15px rgba(29, 111, 66, 0.2); }
@@ -119,22 +124,25 @@
 
         /* Device List Table */
         .device-list-container { max-width: 1200px; margin: 0 auto 40px auto; }
-        .device-row { cursor: pointer; transition: background 0.2s; } .device-row:hover { background: #f1f2f6; }
-        .action-btn { background: var(--bat-navy); color: white; padding: 6px 14px; border-radius: 6px; font-size: 0.75rem; border: none; cursor: pointer; transition: all 0.2s; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+        .device-row { cursor: pointer; transition: background 0.2s; } .device-row:hover { background: #f0f4f8; }
+        .action-btn { background: var(--bat-navy); color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.8rem; border: none; cursor: pointer; transition: all 0.2s; font-weight: 500;}
         .action-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        /* Realtime Flash Animation */
+        @keyframes flashRow {
+            0% { background-color: #d4edda; }
+            100% { background-color: transparent; }
+        }
+        .flash-row { animation: flashRow 1.5s ease-out; }
 
         /* Badge Styles */
-        .badge { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px; }
-        .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; display: block; }
-        .badge.online { background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); } 
-        .badge.online::before { background: #28a745; box-shadow: 0 0 6px #28a745; }
-        .badge.offline { background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); }
-        .badge.offline::before { background: #dc3545; }
-        .badge.waiting { background: rgba(108, 117, 125, 0.1); color: #6c757d; border: 1px solid rgba(108, 117, 125, 0.2); }
-        .badge.waiting::before { background: #6c757d; }
+        .badge { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
+        .badge.online { background: #28a745; color: white; box-shadow: 0 2px 5px rgba(40, 167, 69, 0.3); } 
+        .badge.offline { background: #e74c3c; color: white; box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3); }
+        .badge.waiting { background: #95a5a6; color: white; }
 
         /* Modal */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(44, 62, 80, 0.8); align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(26, 42, 58, 0.8); align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background-color: white; border-radius: 20px; width: 90%; max-width: 600px; box-shadow: 0 25px 60px rgba(0,0,0,0.4); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; animation: zoomIn 0.3s ease; }
         @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .modal-header { background: var(--bat-navy); padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; color: white; }
@@ -158,53 +166,32 @@
         .ai-input-field:focus, .api-key-input:focus { border-color: var(--bat-navy); }
         .ai-btn { background: var(--bat-navy); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: background 0.2s; white-space: nowrap; }
         .ai-btn:hover { background: #004080; }
-        .ai-btn.secondary { background: #ecf0f1; color: var(--text-main); }
         .ai-chat-area { display: flex; flex-direction: column; gap: 15px; background: #f0f4f8; padding: 20px; border-radius: 12px; }
         .ai-response-box { font-size: 0.95rem; line-height: 1.6; color: #333; min-height: 40px; }
 
-        /* Global Loader */
-        #globalLoader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #ffffff; z-index: 9999; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; transition: opacity 0.5s ease;
-        }
-        .loader-spinner {
-            width: 50px; height: 50px; border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--bat-navy); border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 15px;
-        }
-        .loader-text { font-weight: 600; color: var(--bat-navy); letter-spacing: 1px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
         @media (max-width: 768px) {
-            body { padding: 10px; } 
-            h1 { font-size: 1.3rem; } .subtitle { font-size: 0.8rem; }
+            body { padding: 15px; } .header-container { margin-bottom: 20px; } h1 { font-size: 1.4rem; }
             .container { grid-template-columns: 1fr; gap: 15px; } 
-            .card { padding: 15px; flex-direction: row; align-items: center; min-height: 90px; }
-            .card-header { margin-bottom: 0; margin-right: 15px; } 
+            .card { padding: 20px; flex-direction: row; align-items: center; min-height: 100px; }
+            .card-header { margin-bottom: 0; margin-right: 20px; } 
             .soil-card .card-title, .temp-card .card-title, .hum-card .card-title { display: none; }
-            .soil-card .card-header, .temp-card .card-header, .hum-card .card-header { margin-bottom: 0; flex-direction: row-reverse; gap: 10px; align-items: center; }
-            .value-box { font-size: 2rem; margin: 0; }
+            .soil-card .card-header, .temp-card .card-header, .hum-card .card-header { margin-bottom: 0; flex-direction: row-reverse; gap: 15px; align-items: center; }
+            .value-box { font-size: 2.2rem; margin: 0; }
             .charts-grid { grid-template-columns: 1fr; gap: 20px; } 
-            .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 15px; }
-            .filter-input, .filter-btn, .download-btn, .device-select { width: 100%; min-width: auto; }
-            .chart-container-inner { height: 250px; } .pie-container-inner { height: 220px; } 
+            .filter-bar { flex-direction: column; align-items: stretch; gap: 15px; padding: 20px; }
+            .chart-container-inner { height: 280px; } .pie-container-inner { height: 220px; } 
             .modal-content { width: 95%; max-height: 90vh; }
-            .info-grid { grid-template-columns: 1fr; gap: 10px; }
-            .header-container { margin-bottom: 15px; }
+            .info-grid { grid-template-columns: 1fr; gap: 15px; }
+            .device-select { width: 100%; min-width: auto; }
+            .download-container { justify-content: center; }
+            .download-btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Global Loader -->
-    <div id="globalLoader">
-        <div class="loader-spinner"></div>
-        <div class="loader-text">CONNECTING TO FARM...</div>
-    </div>
-
     <div class="header-container">
-        <h1><i class="ph-fill ph-plant" style="color: #27ae60;"></i> BAT BANGLADESH</h1>
+        <h1><i class="ph-fill ph-plant" style="color: #556b2f;"></i> BAT BANGLADESH</h1>
         <div class="subtitle">Smart Tobacco Field Monitoring System</div>
         
         <!-- Navigation -->
@@ -296,7 +283,7 @@
                     <div class="chart-container-inner">
                         <canvas id="moistureChart"></canvas>
                     </div>
-                    <div style="font-size:0.7rem; color:#95a5a6; margin-top:5px; text-align:center;">
+                    <div style="font-size:0.75rem; color:#999; margin-top:5px; text-align:center;">
                         <i class="ph ph-hand-pointing"></i> Scroll/Pinch to Zoom & Drag to Pan
                     </div>
                 </div>
@@ -329,9 +316,11 @@
         </div>
 
         <div class="download-container">
+            <!-- PDF Export Button -->
             <button class="download-btn" onclick="downloadPDF()">
                 <i class="ph-fill ph-file-pdf"></i> Download Report (PDF)
             </button>
+            <!-- Excel Export Button -->
             <button class="download-btn excel" onclick="downloadExcel()">
                 <i class="ph-fill ph-microsoft-excel-logo"></i> Export to Excel
             </button>
@@ -346,18 +335,16 @@
                 <table id="deviceListTable">
                     <thead>
                         <tr>
-                            <th style="width: 50px;">#</th>
                             <th>Device Name / ID</th>
                             <th>Status</th>
                             <th>Last Seen</th>
                             <th>Soil</th>
-                            <th>Raw</th>
                             <th>Temp</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="deviceListBody">
-                        <tr><td colspan="8" style="text-align:center;">Loading devices...</td></tr>
+                        <tr><td colspan="6" style="text-align:center;">Loading devices...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -462,7 +449,7 @@
                         <div class="ai-response-box" id="ai-output">👋 Select a device to analyze.</div>
                         <div style="display:flex; gap:10px; margin-top:10px;">
                             <input type="text" id="ai-prompt" class="ai-input-field" placeholder="Ask expert...">
-                            <button class="ai-btn secondary" style="width:auto;" onclick="askAI()"><i class="ph-fill ph-paper-plane-right"></i></button>
+                            <button class="ai-btn" onclick="askAI()"><i class="ph-fill ph-paper-plane-right"></i></button>
                         </div>
                         <button class="ai-btn" style="width:100%; margin-top:5px; background:#556b2f;" onclick="analyzeGarden()">
                             <i class="ph-fill ph-check-circle"></i> Check Harvest Status
@@ -493,7 +480,6 @@
         let uniqueDevices = new Set();
         let deviceNameMap = {}; 
         let selectedDeviceUid = "";
-        let deviceMetadata = {}; // Store visibility info
         
         let myChart, myPieChart;
         const socket = io("https://batbv3.espserver.site", { transports: ['websocket', 'polling'] });
@@ -502,18 +488,6 @@
         function setText(id, text) {
             const el = document.getElementById(id);
             if (el) el.innerText = text;
-        }
-
-        // --- Helper: Loading State ---
-        function toggleLoader(show) {
-            const loader = document.getElementById('globalLoader');
-            if (show) {
-                loader.style.display = 'flex';
-                loader.style.opacity = '1';
-            } else {
-                loader.style.opacity = '0';
-                setTimeout(() => loader.style.display = 'none', 500);
-            }
         }
 
         // --- Helper: Beautiful Toast ---
@@ -572,44 +546,39 @@
                 if(d.uid && !latestPerDevice[d.uid]) { latestPerDevice[d.uid] = d; }
             });
             
-            // Merge existing data devices and metadata devices
-            const allKnownUIDs = new Set([...Object.keys(latestPerDevice), ...Object.keys(deviceMetadata)]);
+            // Also include devices from name map that might be offline/not in recent history
+            const allKnownUIDs = new Set([...Object.keys(latestPerDevice), ...Object.keys(deviceNameMap)]);
 
-            let visibleCount = 0;
-            let counter = 1;
+            if(allKnownUIDs.size === 0) {
+                tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>No devices found</td></tr>";
+                return;
+            }
 
             Array.from(allKnownUIDs).forEach(uid => {
-                // Filter hidden devices
-                const meta = deviceMetadata[uid];
-                if (meta && meta.isHidden) return;
-                
-                visibleCount++;
                 const d = latestPerDevice[uid];
-                const name = (meta && meta.name) ? meta.name : uid;
+                const name = deviceNameMap[uid] || uid;
                 
                 let statusHtml = '<span class="badge offline">Offline</span>';
-                let lastSeen = "No recent data";
+                let lastSeen = "No Data";
                 let soilVal = "--";
-                let soilRaw = "--"; 
                 let tempVal = "--";
 
                 if (d) {
                     const now = new Date();
                     const dTime = new Date(d.dateTime); 
                     const diffMs = now - dTime; 
-                    // 12 hours check
-                    const isOnline = diffMs < 43200000; 
-
+                    
+                    const isOnline = diffMs < 1800000; // 30 mins
                     statusHtml = isOnline 
                         ? '<span class="badge online">Active</span>' 
                         : '<span class="badge offline">Offline</span>';
                     
                     lastSeen = formatTimeAMPM(d.dateTime);
                     soilVal = (d.soil1?.percent !== undefined) ? d.soil1.percent + "%" : "--";
-                    soilRaw = (d.soil1?.raw !== undefined) ? d.soil1.raw : "--"; 
                     tempVal = (d.dht?.temp !== undefined) ? d.dht.temp + "°C" : "--";
                 }
 
+                // Soil color logic
                 let soilColor = 'inherit';
                 if (d && d.soil1?.percent !== undefined) {
                     soilColor = (d.soil1.percent < 40) ? '#d63031' : '#0f5132';
@@ -619,12 +588,10 @@
                 tr.onclick = () => selectAndSwitch(uid);
                 tr.classList.add('device-row');
                 tr.innerHTML = `
-                    <td style="font-weight:bold; color:#7f8c8d;">${counter++}</td>
                     <td style="font-weight:600; color:var(--bat-navy);">${name}</td>
                     <td>${statusHtml}</td>
                     <td style="font-size:0.85rem;">${lastSeen}</td>
                     <td style="color:${soilColor}; font-weight:600;">${soilVal}</td>
-                    <td style="font-family:monospace; color:#666;">${soilRaw}</td>
                     <td>${tempVal}</td>
                     <td>
                         <button class="action-btn" onclick="event.stopPropagation(); selectAndSwitch('${uid}')">
@@ -634,10 +601,6 @@
                 `;
                 tbody.appendChild(tr);
             });
-            
-            if(visibleCount === 0) {
-                 tbody.innerHTML = "<tr><td colspan='8' style='text-align:center;'>No devices found</td></tr>";
-            }
         }
 
         function selectAndSwitch(uid) {
@@ -645,7 +608,7 @@
             document.getElementById('deviceSelect').value = uid;
             filterDataByDevice();
             switchView('dashboard');
-            const name = (deviceMetadata[uid] && deviceMetadata[uid].name) ? deviceMetadata[uid].name : uid;
+            const name = deviceNameMap[uid] || uid;
             showToast(`Selected: ${name}`, "success");
         }
 
@@ -688,16 +651,16 @@
             } catch(e) { showToast("Server Error", "error"); }
         }
 
-        // --- Other Logic ---
+        // --- Name Management ---
         async function fetchDeviceNames() {
             try {
-                // Fetch full metadata including visibility
-                const res = await fetch(`${API_BASE_URL}/api/device-metadata`);
-                if (res.ok) {
-                    deviceMetadata = await res.json();
-                    updateDeviceDropdown();
+                const res = await fetch(`${API_BASE_URL}/api/device-names`);
+                const contentType = res.headers.get("content-type");
+                if (res.ok && contentType && contentType.includes("application/json")) {
+                    deviceNameMap = await res.json();
+                    updateDeviceDropdown(); 
                 }
-            } catch(e) { console.error("Failed to fetch meta", e); }
+            } catch(e) { console.error("Failed to fetch names", e); }
         }
 
         async function saveDeviceName() {
@@ -708,13 +671,11 @@
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ uid: selectedDeviceUid, name: newName })
                 });
-                if (res.ok) {
+                const contentType = res.headers.get("content-type");
+                if (res.ok && contentType && contentType.includes("application/json")) {
                     const data = await res.json();
                     if(data.success) {
-                        // Update local metadata
-                        if(!deviceMetadata[selectedDeviceUid]) deviceMetadata[selectedDeviceUid] = {};
-                        deviceMetadata[selectedDeviceUid].name = newName;
-                        
+                        deviceNameMap[selectedDeviceUid] = newName;
                         showToast("Device renamed successfully!", "success");
                         updateDeviceDropdown();
                         document.getElementById('deviceSelect').value = selectedDeviceUid;
@@ -725,22 +686,15 @@
         }
 
         socket.on('name-updated', (data) => {
-            if(!deviceMetadata[data.uid]) deviceMetadata[data.uid] = {};
-            deviceMetadata[data.uid].name = data.name;
+            deviceNameMap[data.uid] = data.name;
             updateDeviceDropdown();
             if(selectedDeviceUid === data.uid) {
                 document.getElementById('deviceSelect').value = selectedDeviceUid;
             }
             renderDeviceListTable();
         });
-        
-        socket.on('visibility-updated', (data) => {
-            if(!deviceMetadata[data.uid]) deviceMetadata[data.uid] = {};
-            deviceMetadata[data.uid].isHidden = data.isHidden;
-            updateDeviceDropdown();
-            renderDeviceListTable();
-        });
 
+        // --- Device Logic ---
         function updateDeviceList(dataList) {
             let changed = false;
             dataList.forEach(item => {
@@ -753,18 +707,6 @@
                 updateDeviceDropdown();
                 renderDeviceListTable();
             }
-            
-            // Auto select if data loaded and no selection
-            if(!selectedDeviceUid && dataList.length > 0) {
-                 const firstUid = dataList[0].uid;
-                 // Ensure it's visible
-                 if(!deviceMetadata[firstUid] || !deviceMetadata[firstUid].isHidden) {
-                     selectedDeviceUid = firstUid;
-                     const drop = document.getElementById('deviceSelect');
-                     if(drop) drop.value = firstUid;
-                     filterDataByDevice();
-                 }
-            }
         }
 
         function updateDeviceDropdown() {
@@ -772,47 +714,31 @@
             const currentVal = select.value; 
             select.innerHTML = "";
             
-            // Use metadata to determine visible devices
-            const visibleUIDs = new Set();
-            
-            // From unique devices seen in data stream
-            uniqueDevices.forEach(uid => {
-                const meta = deviceMetadata[uid];
-                if (!meta || !meta.isHidden) visibleUIDs.add(uid);
-            });
-            
-            // From metadata itself (even if no recent data)
-            Object.keys(deviceMetadata).forEach(uid => {
-                if (!deviceMetadata[uid].isHidden) visibleUIDs.add(uid);
-            });
+            const allUIDs = new Set([...uniqueDevices, ...Object.keys(deviceNameMap)]);
 
-            if(visibleUIDs.size === 0) {
-                const opt = document.createElement('option'); opt.text = "No visible devices..."; opt.disabled = true; opt.selected = true; select.add(opt); return;
+            if(allUIDs.size === 0) {
+                const opt = document.createElement('option'); opt.text = "Searching devices..."; opt.disabled = true; opt.selected = true; select.add(opt); return;
             }
 
-            visibleUIDs.forEach(uid => {
+            allUIDs.forEach(uid => {
                 const opt = document.createElement('option'); opt.value = uid;
-                const name = (deviceMetadata[uid] && deviceMetadata[uid].name) ? deviceMetadata[uid].name : `Device: ${uid}`;
-                opt.text = name;
-                select.add(opt);
+                const friendlyName = deviceNameMap[uid] ? `${deviceNameMap[uid]}` : `Device: ${uid}`;
+                opt.text = friendlyName; select.add(opt);
             });
 
-            if(currentVal && visibleUIDs.has(currentVal)) { select.value = currentVal; } 
-            else if(!selectedDeviceUid && visibleUIDs.size > 0) {
-                selectedDeviceUid = Array.from(visibleUIDs)[0];
+            if(currentVal && uniqueDevices.has(currentVal)) { select.value = currentVal; } 
+            else if(!selectedDeviceUid && uniqueDevices.size > 0) {
+                selectedDeviceUid = Array.from(uniqueDevices)[0];
                 select.value = selectedDeviceUid; filterDataByDevice();
             }
         }
 
         function changeDevice() {
             selectedDeviceUid = document.getElementById('deviceSelect').value;
-            if(deviceMetadata[selectedDeviceUid] && deviceMetadata[selectedDeviceUid].name) 
-                document.getElementById('renameInput').value = deviceMetadata[selectedDeviceUid].name;
-            else 
-                document.getElementById('renameInput').value = "";
-            
+            if(deviceNameMap[selectedDeviceUid]) document.getElementById('renameInput').value = deviceNameMap[selectedDeviceUid];
+            else document.getElementById('renameInput').value = "";
             filterDataByDevice();
-            const name = (deviceMetadata[selectedDeviceUid] && deviceMetadata[selectedDeviceUid].name) || selectedDeviceUid;
+            const name = deviceNameMap[selectedDeviceUid] || selectedDeviceUid;
             showToast(`Switched to: ${name}`, "info");
         }
 
@@ -846,7 +772,8 @@
             const s1 = document.getElementById('s1-percent').innerText;
             const temp = document.getElementById('dht-temp').innerText;
             const ver = document.getElementById('device-version').innerText;
-            const name = (deviceMetadata[selectedDeviceUid] && deviceMetadata[selectedDeviceUid].name) || selectedDeviceUid;
+            const name = deviceNameMap[selectedDeviceUid] || selectedDeviceUid;
+            
             const context = `Expert agronomist for BATB. Device: ${name} (FW: ${ver}). Data: Soil:${s1}%, Temp:${temp}°C. Query: ${promptText}. BATB Rules: Soil 40-70% optimal. Short answer with emojis.`;
 
             try {
@@ -876,23 +803,16 @@
                 const dTime = new Date(last.dateTime);
                 const diffMs = now - dTime;
                 
-                // 12 hours check (Active logic)
-                if (diffMs < 43200000) { 
+                if (diffMs < 1800000) { 
                     statusEl.className = "status-pill online";
                     statusText.innerText = "CONNECTED";
                 } else {
                     statusEl.className = "status-pill offline";
-                    statusText.innerText = "OFFLINE (>12h)";
+                    statusText.innerText = "OFFLINE (>30m)";
                 }
             } else {
-                // Determine if loading or waiting
-                if (allData.length === 0) {
-                     statusEl.className = "status-pill waiting";
-                     statusText.innerText = "LOADING DATA...";
-                } else {
-                     statusEl.className = "status-pill waiting";
-                     statusText.innerText = "WAITING FOR DATA...";
-                }
+                statusEl.className = "status-pill waiting";
+                statusText.innerText = "WAITING FOR DATA...";
             }
             
             if(document.getElementById('deviceListView').classList.contains('active')) {
@@ -927,6 +847,7 @@
             if(data.dateTime) setText('device-time', formatTimeAMPM(data.dateTime));
             if(data.version) setText('device-version', data.version);
             
+            // Update Config Display in Modal
             if(data.config) {
                 setText('conf-dry', data.config.dry || '--');
                 setText('conf-wet', data.config.wet || '--');
@@ -998,12 +919,15 @@
             const start = document.getElementById('startDate').value;
             const end = document.getElementById('endDate').value;
             
+            // 1. If no dates selected, return current filtered data (from memory)
             if (!start || !end) {
                 return filteredData.length > 0 ? filteredData : deviceData;
             }
 
+            // 2. If dates selected, fetch FULL HISTORY from Server
             showToast("Fetching full history from server...", "info");
             try {
+                // Construct URL with query params
                 const url = new URL(`${API_BASE_URL}/api/report`);
                 if(selectedDeviceUid) url.searchParams.append('uid', selectedDeviceUid);
                 url.searchParams.append('startDate', start);
@@ -1013,12 +937,12 @@
                 if (!res.ok) throw new Error("Server error");
                 
                 const serverData = await res.json();
-                showToast(`Loaded ${serverData.length} records`, "success");
+                showToast(`Loaded ${serverData.length} records from database`, "success");
                 return serverData;
             } catch (e) {
                 console.error(e);
                 showToast("Failed to fetch history. Using local data.", "error");
-                return filteredData; 
+                return filteredData; // Fallback
             }
         }
 
@@ -1028,12 +952,12 @@
             
             if(dataToExport.length === 0) { showToast("No data to export", "error"); return; }
 
-            const devName = (deviceMetadata[selectedDeviceUid] && deviceMetadata[selectedDeviceUid].name) || selectedDeviceUid || "All_Devices";
+            const devName = deviceNameMap[selectedDeviceUid] || selectedDeviceUid || "All_Devices";
             
             const excelData = dataToExport.map(row => ({
                 "Date": row.dateTime ? row.dateTime.split(' ')[0] : '-',
                 "Time": formatTimeAMPM(row.dateTime),
-                "Device Name": (deviceMetadata[row.uid] && deviceMetadata[row.uid].name) || row.uid,
+                "Device Name": deviceNameMap[row.uid] || row.uid,
                 "Device UID": row.uid,
                 "Soil Moisture (%)": row.soil1?.percent || 0,
                 "Soil Raw": row.soil1?.raw || 0,
@@ -1059,7 +983,7 @@
             
             doc.setFontSize(18); doc.setTextColor(0, 51, 102); doc.text("BAT Bangladesh - Smart Farm Report", 14, 20);
             doc.setFontSize(10); doc.setTextColor(100); 
-            const devName = (deviceMetadata[selectedDeviceUid] && deviceMetadata[selectedDeviceUid].name) || selectedDeviceUid || "All Devices";
+            const devName = deviceNameMap[selectedDeviceUid] || selectedDeviceUid || "All Devices";
             
             doc.text(`Device Name: ${devName}`, 14, 30);
             doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
@@ -1080,14 +1004,12 @@
         }
 
         async function loadData() {
-            toggleLoader(true);
             await fetchDeviceNames();
             try {
                 const res = await fetch(`${API_BASE_URL}/api/esp32`);
                 allData = await res.json();
                 updateDeviceList(allData);
             } catch(e) { console.error(e); }
-            toggleLoader(false);
         }
 
         socket.on('new-data', (data) => {

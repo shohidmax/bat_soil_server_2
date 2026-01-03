@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BATB Admin Panel</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background: #f0f3f8; margin: 0; padding: 20px; color: #1a2a3a; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        h1 { color: #003366; margin: 0; }
+        
+        /* Login Overlay */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #003366; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        .login-box input { padding: 10px; border-radius: 5px; border: none; margin-right: 10px; }
+        .login-box button { padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .section-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 15px; color: #003366; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        /* Control Unit */
+        .control-unit { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
+        .control-input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; flex-grow: 1; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 500; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-primary { background: #003366; } .btn-danger { background: #c0392b; } .btn-success { background: #27ae60; } .btn-warning { background: #f39c12; }
+        
+        /* Table */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #003366; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: white; }
+        .bg-green { background: #27ae60; } .bg-red { background: #c0392b; } .bg-gray { background: #7f8c8d; }
+        
+        .live-data-box { background: #222; color: #0f0; padding: 15px; font-family: monospace; border-radius: 8px; margin-top: 10px; min-height: 60px; font-size: 0.9rem; }
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay">
+        <h2>BATB Admin Login</h2>
+        <div class="login-box">
+            <input type="password" id="adminPass" placeholder="Enter Secret Password">
+            <button onclick="checkLogin()">Login</button>
+        </div>
+    </div>
+
+    <div class="container" id="adminContent" style="display:none;">
+        <div class="header">
+            <h1><i class="ph-fill ph-shield-check"></i> Admin Panel</h1>
+            <a href="/" class="btn btn-primary" style="text-decoration:none;">Go to Dashboard</a>
+        </div>
+
+        <!-- Control Unit -->
+        <div class="card">
+            <div class="section-title"><i class="ph-fill ph-game-controller"></i> Control Unit</div>
+            <div class="control-unit">
+                <input type="text" id="targetUid" class="control-input" placeholder="Enter Device UID (or select from list)">
+                <button class="btn btn-success" onclick="connectToDevice()">Connect & Monitor</button>
+            </div>
+            
+            <div id="controlPanel" style="display:none;">
+                <div class="live-data-box" id="liveDataDisplay">Waiting for live data...</div>
+                
+                <!-- Metadata Update -->
+                <div class="meta-grid">
+                    <input type="text" id="metaName" class="control-input" placeholder="Device Name">
+                    <input type="text" id="metaLat" class="control-input" placeholder="Latitude">
+                    <input type="text" id="metaLon" class="control-input" placeholder="Longitude">
+                </div>
+                <button class="btn btn-warning" style="width:100%; margin-top:10px;" onclick="updateMetadata()">Update Device Info</button>
+
+                <!-- Remote Control -->
+                <div style="margin-top: 20px; border-top: 1px dashed #ddd; padding-top: 15px;">
+                    <strong style="color:#003366;">Remote Actions:</strong>
+                    <div style="display:flex; gap:10px; margin-top: 10px;">
+                        <button class="btn btn-danger" onclick="sendCommand('restart')">Restart</button>
+                        <input type="number" id="dryVal" placeholder="Dry" style="width:70px; padding:5px; border-radius:5px; border:1px solid #ddd;">
+                        <button class="btn btn-primary" onclick="sendCommand('setDry')">Set Dry</button>
+                        <input type="number" id="wetVal" placeholder="Wet" style="width:70px; padding:5px; border-radius:5px; border:1px solid #ddd;">
+                        <button class="btn btn-primary" onclick="sendCommand('setWet')">Set Wet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Management -->
+        <div class="card">
+            <div class="section-title"><i class="ph-fill ph-list-dashes"></i> Device Visibility & List</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>UID</th>
+                        <th>Location</th>
+                        <th>Last Seen</th>
+                        <th>Visibility</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="deviceTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let allData = [];
+        let deviceMetadata = {};
+        let monitoredUid = null;
+
+        function checkLogin() {
+            const pass = document.getElementById('adminPass').value;
+            if(pass === "batbadmin2025") {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('adminContent').style.display = 'block';
+                loadData();
+            } else { alert("Wrong Password!"); }
+        }
+
+        async function loadData() {
+            try {
+                const metaRes = await fetch('/api/device-metadata');
+                deviceMetadata = await metaRes.json();
+                
+                const res = await fetch('/api/esp32');
+                allData = await res.json();
+                renderTable();
+            } catch(e) { console.error(e); }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('deviceTableBody');
+            tbody.innerHTML = "";
+            
+            const devices = {};
+            allData.forEach(d => { if(!devices[d.uid]) devices[d.uid] = d; });
+            Object.keys(deviceMetadata).forEach(uid => { if(!devices[uid]) devices[uid] = { uid: uid, dateTime: null }; });
+
+            Object.values(devices).forEach(d => {
+                const meta = deviceMetadata[d.uid] || { name: d.uid, isHidden: false, lat: '-', lon: '-' };
+                const isHidden = meta.isHidden;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:600;">${meta.name || d.uid}</td>
+                    <td style="font-size:0.8rem; color:#666;">${d.uid}</td>
+                    <td style="font-size:0.8rem;">${meta.lat || '-'}, ${meta.lon || '-'}</td>
+                    <td>${d.dateTime ? d.dateTime.split(' ')[1] : 'Never'}</td>
+                    <td>${isHidden ? '<span class="badge bg-gray">Hidden</span>' : '<span class="badge bg-green">Visible</span>'}</td>
+                    <td>
+                        <button class="btn ${isHidden ? 'btn-success' : 'btn-danger'}" style="padding:5px 10px; font-size:0.8rem;" 
+                                onclick="toggleVisibility('${d.uid}', ${!isHidden})">
+                            ${isHidden ? 'Show' : 'Hide'}
+                        </button>
+                        <button class="btn btn-primary" style="padding:5px 10px; font-size:0.8rem;" onclick="setControl('${d.uid}')">Control</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function toggleVisibility(uid, hideStatus) {
+            await fetch('/api/device-metadata', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ uid, isHidden: hideStatus })
+            });
+            if(!deviceMetadata[uid]) deviceMetadata[uid] = {};
+            deviceMetadata[uid].isHidden = hideStatus;
+            renderTable();
+        }
+
+        async function updateMetadata() {
+            if(!monitoredUid) return alert("No device connected");
+            const name = document.getElementById('metaName').value;
+            const lat = document.getElementById('metaLat').value;
+            const lon = document.getElementById('metaLon').value;
+
+            await fetch('/api/device-metadata', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ uid: monitoredUid, name, lat, lon })
+            });
+            
+            // Local update
+            if(!deviceMetadata[monitoredUid]) deviceMetadata[monitoredUid] = {};
+            deviceMetadata[monitoredUid].name = name;
+            deviceMetadata[monitoredUid].lat = lat;
+            deviceMetadata[monitoredUid].lon = lon;
+            
+            alert("Updated!");
+            renderTable();
+        }
+
+        function setControl(uid) {
+            document.getElementById('targetUid').value = uid;
+            connectToDevice();
+        }
+
+        function connectToDevice() {
+            monitoredUid = document.getElementById('targetUid').value;
+            if(!monitoredUid) return alert("Enter UID");
+            document.getElementById('controlPanel').style.display = 'block';
+            document.getElementById('liveDataDisplay').innerText = `Listening for ${monitoredUid}...`;
+            
+            // Prefill Metadata
+            const meta = deviceMetadata[monitoredUid] || {};
+            document.getElementById('metaName').value = meta.name || "";
+            document.getElementById('metaLat').value = meta.lat || "";
+            document.getElementById('metaLon').value = meta.lon || "";
+        }
+
+        socket.on('new-data', (data) => {
+            if (monitoredUid && data.uid === monitoredUid) {
+                document.getElementById('liveDataDisplay').innerText = 
+                    `[${data.dateTime}] Soil: ${data.soil1.percent}% (${data.soil1.raw}) | Temp: ${data.dht?.temp}C | IP: ${data.ip}`;
+            }
+        });
+
+        async function sendCommand(cmd) {
+            if(!monitoredUid) return alert("Connect to a device first");
+            let val = 0;
+            if(cmd === 'setDry') val = document.getElementById('dryVal').value;
+            if(cmd === 'setWet') val = document.getElementById('wetVal').value;
+            
+            await fetch('/api/send-command', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ uid: monitoredUid, command: cmd, value: val })
+            });
+            alert("Command Sent!");
+        }
+        
+        setInterval(renderTable, 10000);
+    </script>
+</body>
+</html>
