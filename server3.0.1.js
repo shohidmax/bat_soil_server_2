@@ -1,8 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const path = require('path');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
@@ -38,46 +37,7 @@ async function run() {
     const EspCollection = db.collection('espdata2');
     const DeviceMetaCollection = db.collection('device_metadata');
 
-    // --- ADMIN ROUTE ---
-    app.get('/admin', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-    });
-
-    // --- API: Toggle Device Visibility (Admin) ---
-    app.post('/api/admin/toggle-visibility', async (req, res) => {
-        const { uid, isHidden } = req.body;
-        try {
-            await DeviceMetaCollection.updateOne(
-                { uid }, 
-                { $set: { uid, isHidden: isHidden } }, 
-                { upsert: true }
-            );
-            io.emit('visibility-updated', { uid, isHidden }); // Notify clients
-            res.send({ success: true });
-        } catch (e) { res.status(500).send({ error: "Failed" }); }
-    });
-
-    // --- API: Get Device Metadata (Names & Visibility) ---
-    app.get('/api/device-metadata', async (req, res) => {
-      try {
-        const docs = await DeviceMetaCollection.find({}).toArray();
-        const metaMap = {};
-        docs.forEach(doc => { 
-            metaMap[doc.uid] = { name: doc.name, isHidden: doc.isHidden }; 
-        });
-        res.send(metaMap);
-      } catch (err) { res.status(500).send({ error: "Error fetching metadata" }); }
-    });
-    
-    // Legacy support for name only
-    app.get('/api/device-names', async (req, res) => {
-        const docs = await DeviceMetaCollection.find({}).toArray();
-        const nameMap = {};
-        docs.forEach(doc => { nameMap[doc.uid] = doc.name; });
-        res.send(nameMap);
-    });
-
-    // --- API: Save Name ---
+    // --- 1. Device Name API ---
     app.post('/api/device-name', async (req, res) => {
       try {
         const { uid, name } = req.body;
@@ -87,21 +47,35 @@ async function run() {
       } catch (err) { res.status(500).send({ error: "Error saving name" }); }
     });
 
-    // --- Command API ---
+    app.get('/api/device-names', async (req, res) => {
+      try {
+        const docs = await DeviceMetaCollection.find({}).toArray();
+        const nameMap = {};
+        docs.forEach(doc => { nameMap[doc.uid] = doc.name; });
+        res.send(nameMap);
+      } catch (err) { res.status(500).send({ error: "Error fetching names" }); }
+    });
+
+    // --- 2. Send Command API ---
     app.post('/api/send-command', (req, res) => {
       const { uid, command, value } = req.body;
+      if (!uid || !command) return res.status(400).send({ error: "Missing params" });
+
       if (!pendingCommands[uid]) pendingCommands[uid] = {};
 
-      if (command === 'restart') pendingCommands[uid].command = 'restart';
-      else if (command === 'setDry') pendingCommands[uid].setDry = parseInt(value);
-      else if (command === 'setWet') pendingCommands[uid].setWet = parseInt(value);
-      else if (command === 'setInterval') pendingCommands[uid].setInterval = parseInt(value);
-
-      console.log(`Command queued for ${uid}`);
+      if (command === 'restart') {
+        pendingCommands[uid].command = 'restart';
+      } else if (command === 'setDry') {
+        pendingCommands[uid].setDry = parseInt(value);
+      } else if (command === 'setWet') {
+        pendingCommands[uid].setWet = parseInt(value);
+      } else if (command === 'setInterval') {
+        pendingCommands[uid].setInterval = parseInt(value);
+      }
       res.send({ success: true, message: "Command queued" });
     });
 
-    // --- Sensor Data API ---
+    // --- 3. Sensor Data & Command Response API ---
     app.post('/api/esp32p', async (req, res) => {
       try {
         const sensorData = req.body;
@@ -119,27 +93,48 @@ async function run() {
       } catch (err) { res.status(500).send("Server Error"); }
     });
 
+    // --- 4. Recent Data API (Limited for Dashboard) ---
     app.get('/api/esp32', async(req, res) =>{
       const cursor = EspCollection.find({}).sort({_id: -1}).limit(500);
       const Data = await cursor.toArray();
       res.send(Data);
     });
 
-    // Report API
+    // --- 5. REPORT API (Unlimited based on Date Range) ---
+    // এই API টি ডাটাবেস থেকে ফিল্টার করে সব ডাটা আনবে ডাউনলোডের জন্য
     app.get('/api/report', async (req, res) => {
       try {
         const { uid, startDate, endDate } = req.query;
+        
         let query = {};
-        if (uid) query.uid = uid;
-        if (startDate && endDate) {
-            query.dateTime = { $gte: startDate.replace('T', ' ') + ":00", $lte: endDate.replace('T', ' ') + ":59" };
+        if (uid && uid !== 'undefined') {
+            query.uid = uid;
         }
-        const data = await EspCollection.find(query).sort({ _id: -1 }).toArray();
+
+        // Date Range Query (String Comparison for YYYY-MM-DD HH:MM:SS)
+        if (startDate && endDate) {
+            // Input format: 2025-11-23T03:33 -> DB format: 2025-11-23 03:33:00
+            const startStr = startDate.replace('T', ' ') + ":00";
+            const endStr = endDate.replace('T', ' ') + ":59";
+            
+            query.dateTime = {
+                $gte: startStr,
+                $lte: endStr
+            };
+        }
+
+        // Fetch ALL matching data (No Limit)
+        const cursor = EspCollection.find(query).sort({ _id: -1 });
+        const data = await cursor.toArray();
+        
         res.send(data);
-      } catch (err) { res.status(500).send({ error: "Failed" }); }
+      } catch (err) {
+        console.error("Report Error:", err);
+        res.status(500).send({ error: "Failed to fetch report data" });
+      }
     });
 
-    app.get("/", (req, res) => res.send("Server Running v3.0"));
+    app.get("/", (req, res) => res.send("Server Running v2.1 (Report Enabled)"));
 
   } finally {}
 }

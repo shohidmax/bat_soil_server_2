@@ -6,12 +6,18 @@
     <title>BAT Bangladesh - Multi-Device Farm</title>
     
     <!-- Scripts -->
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- Socket.io CDN Updated to cdnjs for better stability -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Excel Export Library (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
@@ -106,9 +112,11 @@
         td { padding: 18px; border-bottom: 1px solid #f1f3f5; color: var(--text-main); font-size: 0.95rem; }
         tr:last-child td { border-bottom: none; }
         
-        .download-container { max-width: 1200px; margin: 0 auto 50px auto; text-align: right; }
+        .download-container { max-width: 1200px; margin: 0 auto 50px auto; text-align: right; display: flex; justify-content: flex-end; gap: 15px; flex-wrap: wrap; }
         .download-btn { background: var(--bat-navy); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0, 51, 102, 0.2); text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.9rem; }
         .download-btn:hover { background: #004080; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 51, 102, 0.3); }
+        .download-btn.excel { background: #1D6F42; box-shadow: 0 4px 15px rgba(29, 111, 66, 0.2); }
+        .download-btn.excel:hover { background: #155b33; box-shadow: 0 6px 20px rgba(29, 111, 66, 0.3); }
 
         /* Views */
         .view-section { display: none; }
@@ -127,7 +135,7 @@
         }
         .flash-row { animation: flashRow 1.5s ease-out; }
 
-        /* Badge Styles - UPDATED FOR GREEN ACTIVE */
+        /* Badge Styles */
         .badge { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
         .badge.online { background: #28a745; color: white; box-shadow: 0 2px 5px rgba(40, 167, 69, 0.3); } 
         .badge.offline { background: #e74c3c; color: white; box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3); }
@@ -175,6 +183,8 @@
             .modal-content { width: 95%; max-height: 90vh; }
             .info-grid { grid-template-columns: 1fr; gap: 15px; }
             .device-select { width: 100%; min-width: auto; }
+            .download-container { justify-content: center; }
+            .download-btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
@@ -306,8 +316,13 @@
         </div>
 
         <div class="download-container">
+            <!-- PDF Export Button -->
             <button class="download-btn" onclick="downloadPDF()">
                 <i class="ph-fill ph-file-pdf"></i> Download Report (PDF)
+            </button>
+            <!-- Excel Export Button -->
+            <button class="download-btn excel" onclick="downloadExcel()">
+                <i class="ph-fill ph-microsoft-excel-logo"></i> Export to Excel
             </button>
         </div>
     </div>
@@ -494,6 +509,7 @@
             }).showToast();
         }
 
+        // --- Helper Function: Format Date Time (AM/PM) ---
         function formatTimeAMPM(dateString) {
             if (!dateString) return '-';
             const date = new Date(dateString);
@@ -501,6 +517,7 @@
             return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
         }
 
+        // --- View Navigation ---
         function switchView(viewName) {
             const buttons = document.querySelectorAll('.nav-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
@@ -514,145 +531,77 @@
             } else {
                 buttons[1].classList.add('active');
                 document.getElementById('deviceListView').classList.add('active');
-                // Force initial render of the list if needed
                 renderDeviceListTable();
                 showToast("Viewing Device List", "info");
             }
         }
 
-        // --- Real-time Row Update & Creation ---
-        function updateDeviceRow(d) {
-            const tbody = document.getElementById('deviceListBody');
-            let row = document.getElementById(`device-row-${d.uid}`);
-            
-            const name = deviceNameMap[d.uid] || d.uid;
-            const now = new Date();
-            const dTime = new Date(d.dateTime); 
-            const diffMs = now - dTime; 
-            const isOnline = diffMs < 1800000; // 30 mins
-
-            const statusHtml = isOnline 
-                ? '<span class="badge online">Active</span>' 
-                : '<span class="badge offline">Offline</span>';
-            
-            const soilVal = (d.soil1?.percent !== undefined) ? d.soil1.percent + "%" : "--";
-            const tempVal = (d.dht?.temp !== undefined) ? d.dht.temp + "°C" : "--";
-            const soilColor = (d.soil1?.percent < 40) ? '#d63031' : '#0f5132';
-
-            const innerHTML = `
-                <td style="font-weight:600; color:var(--bat-navy);">${name}</td>
-                <td>${statusHtml}</td>
-                <td style="font-size:0.85rem;" data-last-seen="${d.dateTime}">${formatTimeAMPM(d.dateTime)}</td>
-                <td style="color:${soilColor}; font-weight:600;">${soilVal}</td>
-                <td>${tempVal}</td>
-                <td>
-                    <button class="action-btn" onclick="event.stopPropagation(); selectAndSwitch('${d.uid}')">
-                        <i class="ph-fill ph-eye"></i> View
-                    </button>
-                </td>
-            `;
-
-            if (row) {
-                row.innerHTML = innerHTML;
-                // Flash Animation
-                row.classList.remove('flash-row');
-                void row.offsetWidth; // Trigger reflow
-                row.classList.add('flash-row');
-            } else {
-                // Create new row
-                // Remove "No devices found" if it exists
-                if(tbody.innerHTML.includes("No devices found")) tbody.innerHTML = "";
-                
-                row = document.createElement('tr');
-                row.id = `device-row-${d.uid}`;
-                row.className = 'device-row flash-row';
-                row.onclick = () => selectAndSwitch(d.uid);
-                row.innerHTML = innerHTML;
-                tbody.prepend(row); // Add new to top
-            }
-        }
-
-        // --- Full Render (Initial) ---
+        // --- Render Device List Table ---
         function renderDeviceListTable() {
             const tbody = document.getElementById('deviceListBody');
-            
-            // We need to merge latest data from `allData` with `deviceNameMap` to show offline devices too
+            tbody.innerHTML = "";
             const latestPerDevice = {};
+            
             allData.forEach(d => {
                 if(d.uid && !latestPerDevice[d.uid]) { latestPerDevice[d.uid] = d; }
             });
             
-            const allUIDs = new Set([...Object.keys(latestPerDevice), ...Object.keys(deviceNameMap)]);
-            
-            if(allUIDs.size === 0) {
+            // Also include devices from name map that might be offline/not in recent history
+            const allKnownUIDs = new Set([...Object.keys(latestPerDevice), ...Object.keys(deviceNameMap)]);
+
+            if(allKnownUIDs.size === 0) {
                 tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>No devices found</td></tr>";
                 return;
             }
-            
-            tbody.innerHTML = ""; // Clear only on full render
-            
-            Array.from(allUIDs).forEach(uid => {
-                const d = latestPerDevice[uid];
-                // If we have data, use updateDeviceRow logic manually, else show offline placeholder
-                if (d) {
-                    const name = deviceNameMap[uid] || uid;
-                    const now = new Date(); const dTime = new Date(d.dateTime); 
-                    const diffMs = now - dTime; const isOnline = diffMs < 1800000; 
-                    const statusHtml = isOnline ? '<span class="badge online">Active</span>' : '<span class="badge offline">Offline</span>';
-                    const soilColor = (d.soil1?.percent < 40) ? '#d63031' : '#0f5132';
-                    
-                    const tr = document.createElement('tr');
-                    tr.id = `device-row-${uid}`;
-                    tr.className = 'device-row';
-                    tr.onclick = () => selectAndSwitch(uid);
-                    tr.innerHTML = `
-                        <td style="font-weight:600; color:var(--bat-navy);">${name}</td>
-                        <td>${statusHtml}</td>
-                        <td style="font-size:0.85rem;" data-last-seen="${d.dateTime}">${formatTimeAMPM(d.dateTime)}</td>
-                        <td style="color:${soilColor}; font-weight:600;">${d.soil1?.percent}%</td>
-                        <td>${d.dht?.temp}°C</td>
-                        <td><button class="action-btn" onclick="event.stopPropagation(); selectAndSwitch('${uid}')"><i class="ph-fill ph-eye"></i> View</button></td>
-                    `;
-                    tbody.appendChild(tr);
-                } else {
-                    // Known device but no recent data in allData buffer
-                    const name = deviceNameMap[uid] || uid;
-                    const tr = document.createElement('tr');
-                    tr.id = `device-row-${uid}`;
-                    tr.className = 'device-row';
-                    tr.onclick = () => selectAndSwitch(uid);
-                    tr.innerHTML = `
-                        <td style="font-weight:600; color:var(--bat-navy);">${name}</td>
-                        <td><span class="badge offline">Offline</span></td>
-                        <td style="font-size:0.85rem;" data-last-seen="">Unknown</td>
-                        <td>--</td>
-                        <td>--</td>
-                        <td><button class="action-btn" onclick="event.stopPropagation(); selectAndSwitch('${uid}')"><i class="ph-fill ph-eye"></i> View</button></td>
-                    `;
-                    tbody.appendChild(tr);
-                }
-            });
-        }
-        
-        // --- Status Auto-Refresher ---
-        function checkOfflineStatus() {
-            const rows = document.querySelectorAll('.device-row');
-            rows.forEach(row => {
-                const lastSeenAttr = row.querySelector('[data-last-seen]')?.getAttribute('data-last-seen');
-                if(lastSeenAttr) {
-                    const dTime = new Date(lastSeenAttr);
-                    const now = new Date();
-                    const diffMs = now - dTime;
-                    const statusCell = row.cells[1]; // 2nd column
-                    if (diffMs >= 1800000 && statusCell.innerText.includes("Active")) {
-                         statusCell.innerHTML = '<span class="badge offline">Offline</span>';
-                    }
-                }
-            });
-        }
-        // Run offline check every minute
-        setInterval(checkOfflineStatus, 60000);
 
+            Array.from(allKnownUIDs).forEach(uid => {
+                const d = latestPerDevice[uid];
+                const name = deviceNameMap[uid] || uid;
+                
+                let statusHtml = '<span class="badge offline">Offline</span>';
+                let lastSeen = "No Data";
+                let soilVal = "--";
+                let tempVal = "--";
+
+                if (d) {
+                    const now = new Date();
+                    const dTime = new Date(d.dateTime); 
+                    const diffMs = now - dTime; 
+                    
+                    const isOnline = diffMs < 1800000; // 30 mins
+                    statusHtml = isOnline 
+                        ? '<span class="badge online">Active</span>' 
+                        : '<span class="badge offline">Offline</span>';
+                    
+                    lastSeen = formatTimeAMPM(d.dateTime);
+                    soilVal = (d.soil1?.percent !== undefined) ? d.soil1.percent + "%" : "--";
+                    tempVal = (d.dht?.temp !== undefined) ? d.dht.temp + "°C" : "--";
+                }
+
+                // Soil color logic
+                let soilColor = 'inherit';
+                if (d && d.soil1?.percent !== undefined) {
+                    soilColor = (d.soil1.percent < 40) ? '#d63031' : '#0f5132';
+                }
+
+                const tr = document.createElement('tr');
+                tr.onclick = () => selectAndSwitch(uid);
+                tr.classList.add('device-row');
+                tr.innerHTML = `
+                    <td style="font-weight:600; color:var(--bat-navy);">${name}</td>
+                    <td>${statusHtml}</td>
+                    <td style="font-size:0.85rem;">${lastSeen}</td>
+                    <td style="color:${soilColor}; font-weight:600;">${soilVal}</td>
+                    <td>${tempVal}</td>
+                    <td>
+                        <button class="action-btn" onclick="event.stopPropagation(); selectAndSwitch('${uid}')">
+                            <i class="ph-fill ph-eye"></i> View
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
 
         function selectAndSwitch(uid) {
             selectedDeviceUid = uid;
@@ -663,6 +612,7 @@
             showToast(`Selected: ${name}`, "success");
         }
 
+        // --- Remote Command Logic ---
         async function sendCommand(type) {
             if(!selectedDeviceUid) { showToast("Select a device first!", "error"); return; }
             
@@ -701,6 +651,7 @@
             } catch(e) { showToast("Server Error", "error"); }
         }
 
+        // --- Name Management ---
         async function fetchDeviceNames() {
             try {
                 const res = await fetch(`${API_BASE_URL}/api/device-names`);
@@ -728,10 +679,7 @@
                         showToast("Device renamed successfully!", "success");
                         updateDeviceDropdown();
                         document.getElementById('deviceSelect').value = selectedDeviceUid;
-                        // Update row if exists
-                        const row = document.getElementById(`device-row-${selectedDeviceUid}`);
-                        if(row) row.cells[0].style.color = 'var(--bat-navy)'; 
-                        if(row) row.cells[0].innerText = newName;
+                        renderDeviceListTable();
                     }
                 }
             } catch(e) { showToast("Error", "error"); }
@@ -743,31 +691,41 @@
             if(selectedDeviceUid === data.uid) {
                 document.getElementById('deviceSelect').value = selectedDeviceUid;
             }
-            // Update row name live
-            const row = document.getElementById(`device-row-${data.uid}`);
-            if(row) row.cells[0].innerText = data.name;
+            renderDeviceListTable();
         });
 
+        // --- Device Logic ---
         function updateDeviceList(dataList) {
             let changed = false;
             dataList.forEach(item => {
-                if(item.uid && !uniqueDevices.has(item.uid)) { uniqueDevices.add(item.uid); changed = true; }
+                if(item.uid && !uniqueDevices.has(item.uid)) {
+                    uniqueDevices.add(item.uid);
+                    changed = true;
+                }
             });
-            if(changed) { updateDeviceDropdown(); } // Only update dropdown here, table handled by init or live
+            if(changed) {
+                updateDeviceDropdown();
+                renderDeviceListTable();
+            }
         }
 
         function updateDeviceDropdown() {
             const select = document.getElementById('deviceSelect');
             const currentVal = select.value; 
             select.innerHTML = "";
-            if(uniqueDevices.size === 0) {
+            
+            const allUIDs = new Set([...uniqueDevices, ...Object.keys(deviceNameMap)]);
+
+            if(allUIDs.size === 0) {
                 const opt = document.createElement('option'); opt.text = "Searching devices..."; opt.disabled = true; opt.selected = true; select.add(opt); return;
             }
-            uniqueDevices.forEach(uid => {
+
+            allUIDs.forEach(uid => {
                 const opt = document.createElement('option'); opt.value = uid;
                 const friendlyName = deviceNameMap[uid] ? `${deviceNameMap[uid]}` : `Device: ${uid}`;
                 opt.text = friendlyName; select.add(opt);
             });
+
             if(currentVal && uniqueDevices.has(currentVal)) { select.value = currentVal; } 
             else if(!selectedDeviceUid && uniqueDevices.size > 0) {
                 selectedDeviceUid = Array.from(uniqueDevices)[0];
@@ -815,6 +773,7 @@
             const temp = document.getElementById('dht-temp').innerText;
             const ver = document.getElementById('device-version').innerText;
             const name = deviceNameMap[selectedDeviceUid] || selectedDeviceUid;
+            
             const context = `Expert agronomist for BATB. Device: ${name} (FW: ${ver}). Data: Soil:${s1}%, Temp:${temp}°C. Query: ${promptText}. BATB Rules: Soil 40-70% optimal. Short answer with emojis.`;
 
             try {
@@ -854,6 +813,10 @@
             } else {
                 statusEl.className = "status-pill waiting";
                 statusText.innerText = "WAITING FOR DATA...";
+            }
+            
+            if(document.getElementById('deviceListView').classList.contains('active')) {
+                renderDeviceListTable();
             }
         }, 5000);
 
@@ -951,31 +914,91 @@
             myPieChart.update();
         }
 
-        function downloadPDF() {
-            showToast("Generating PDF Report...", "info");
+        // --- NEW: Fetch Data for Report ---
+        async function getReportData() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            
+            // 1. If no dates selected, return current filtered data (from memory)
+            if (!start || !end) {
+                return filteredData.length > 0 ? filteredData : deviceData;
+            }
+
+            // 2. If dates selected, fetch FULL HISTORY from Server
+            showToast("Fetching full history from server...", "info");
+            try {
+                // Construct URL with query params
+                const url = new URL(`${API_BASE_URL}/api/report`);
+                if(selectedDeviceUid) url.searchParams.append('uid', selectedDeviceUid);
+                url.searchParams.append('startDate', start);
+                url.searchParams.append('endDate', end);
+
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("Server error");
+                
+                const serverData = await res.json();
+                showToast(`Loaded ${serverData.length} records from database`, "success");
+                return serverData;
+            } catch (e) {
+                console.error(e);
+                showToast("Failed to fetch history. Using local data.", "error");
+                return filteredData; // Fallback
+            }
+        }
+
+        // --- UPDATED: Download Excel ---
+        async function downloadExcel() {
+            const dataToExport = await getReportData();
+            
+            if(dataToExport.length === 0) { showToast("No data to export", "error"); return; }
+
+            const devName = deviceNameMap[selectedDeviceUid] || selectedDeviceUid || "All_Devices";
+            
+            const excelData = dataToExport.map(row => ({
+                "Date": row.dateTime ? row.dateTime.split(' ')[0] : '-',
+                "Time": formatTimeAMPM(row.dateTime),
+                "Device Name": deviceNameMap[row.uid] || row.uid,
+                "Device UID": row.uid,
+                "Soil Moisture (%)": row.soil1?.percent || 0,
+                "Soil Raw": row.soil1?.raw || 0,
+                "Temperature (°C)": row.dht?.temp || 0,
+                "Humidity (%)": row.dht?.hum || 0
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sensor Data");
+            XLSX.writeFile(wb, `BATB_Report_${devName}.xlsx`);
+            showToast("Excel Downloaded!", "success");
+        }
+
+        // --- UPDATED: Download PDF ---
+        async function downloadPDF() {
+            const dataToExport = await getReportData();
+            
+            if(dataToExport.length === 0) { showToast("No data to export", "error"); return; }
+            
+            showToast("Generating PDF...", "info");
             const { jsPDF } = window.jspdf; const doc = new jsPDF();
+            
             doc.setFontSize(18); doc.setTextColor(0, 51, 102); doc.text("BAT Bangladesh - Smart Farm Report", 14, 20);
             doc.setFontSize(10); doc.setTextColor(100); 
-            const devName = deviceNameMap[selectedDeviceUid] || selectedDeviceUid || "All";
+            const devName = deviceNameMap[selectedDeviceUid] || selectedDeviceUid || "All Devices";
             
             doc.text(`Device Name: ${devName}`, 14, 30);
-            doc.text(`Device UID: ${selectedDeviceUid || 'N/A'}`, 14, 36);
-            // Fix: Get latest version safely
-            const latestVer = (deviceData.length > 0) ? deviceData[0].version : '-';
-            doc.text(`Firmware Version: ${latestVer}`, 14, 42);
-            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 48);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
+            doc.text(`Total Records: ${dataToExport.length}`, 14, 42);
             
             const col = ["Date", "Time", "Soil (%)", "Analog", "Temp", "Hum"];
             const rows = [];
-            const data = filteredData.length > 0 ? filteredData : deviceData;
             
-            data.forEach(r => { 
+            dataToExport.forEach(r => { 
                 const d=r.dateTime?r.dateTime.split(' ')[0]:'-'; 
                 const t=formatTimeAMPM(r.dateTime); 
                 rows.push([d, t, r.soil1?.percent, r.soil1?.raw, r.dht?.temp, r.dht?.hum]); 
             });
             
-            doc.autoTable({ head: [col], body: rows, startY: 55, theme: 'striped', headStyles: { fillColor: [0, 51, 102] }, styles: { fontSize: 9 } });
+            doc.autoTable({ head: [col], body: rows, startY: 50, theme: 'striped', headStyles: { fillColor: [0, 51, 102] }, styles: { fontSize: 9 } });
             doc.save(`BATB_Report_${devName}.pdf`);
             showToast("PDF Downloaded!", "success");
         }
@@ -986,10 +1009,6 @@
                 const res = await fetch(`${API_BASE_URL}/api/esp32`);
                 allData = await res.json();
                 updateDeviceList(allData);
-                // Also init table if view is active
-                if(document.getElementById('deviceListView').classList.contains('active')) {
-                    renderDeviceListTable();
-                }
             } catch(e) { console.error(e); }
         }
 
@@ -1002,10 +1021,8 @@
                 updateUI(data); updateCharts(filteredData); updateTable(filteredData);
             }
             
-            // --- KEY UPDATE FOR REALTIME LIST ---
-            // Only update the row if list view is active
             if(document.getElementById('deviceListView').classList.contains('active')) {
-                updateDeviceRow(data);
+                renderDeviceListTable();
             }
         });
 
