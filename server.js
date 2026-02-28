@@ -20,7 +20,8 @@ app.use(express.static('public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const uri = "mongodb+srv://atifsupermart202199:FGzi4j6kRnYTIyP9@cluster0.bfulggv.mongodb.net/?retryWrites=true&w=majority";
+const uri2 = "mongodb+srv://agggrmart202199:FGzi4j6kRnYTIyP9@cluster0.bfulggv.mongodb.net/?retryWrites=true&w=majority";
+const uri = "mongodb+srv://sarwarjahanshohid_db_user:9uPybfKCMfvhcRTa@batb-soil.qysle8o.mongodb.net/?appName=batb-soil";
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 let pendingCommands = {};
